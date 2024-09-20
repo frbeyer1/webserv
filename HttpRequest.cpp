@@ -636,9 +636,8 @@ void    HttpRequest::parse(char *data, size_t size)
 
 // ===============   To Do   ================= //
 
+// do Chunk trailing section parsing ???
 
 // do Percent decoding (what happens if URI starts with %2F (/)) ???
-
-// httpRequest Deconstructor
 
 // check for double // in the path ???
