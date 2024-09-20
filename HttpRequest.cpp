@@ -1,9 +1,9 @@
 #include "HttpRequest.hpp"
 
-// Default Constructor
+// =============   Constructor   ============= //
 HttpRequest::HttpRequest()
 {
-    _state = Method;
+    _state = Empty_Line_CR;
     _error = 0;
     _method = NONE;
     _path = "";
@@ -11,30 +11,83 @@ HttpRequest::HttpRequest()
     _fragment = "";
     _version_major = 0;
     _version_minor = 0;
+    _body = "";
+    _method_str = "";
     _header_field_name = "";
     _header_field_value = "";
-    _method_str = "";
-    _method_str_len = 0;
+    _chunk_lenght_str = "";
     _uri_len = 0;
-    _body_lenght = 0;
+    _header_len = 0;
+    _body_len = 0;
+    _chunk_len = 0;
     _body_flag = false;
     _chuncked_transfer_flag = false;
 }
 
-// Deconstructor
+// ============   Deconstructor   ============ //
 HttpRequest::~HttpRequest()
 {
-
 }
 
-/* 
+// ==============   Getters   ================ //
+int HttpRequest::getError()
+{
+    return _error;
+}
+
+int HttpRequest::getVersionMajor()
+{
+    return _version_major;
+}
+int HttpRequest::getVersionMinor()
+{
+    return _version_minor;
+}
+
+HttpMethod    HttpRequest::getMethod()
+{
+    return  _method;
+}
+
+ParsingState    HttpRequest::getParsingState()
+{
+    return  _state;
+}
+
+const std::string   &HttpRequest::getPath()
+{
+    return _path;
+}
+
+const std::string   &HttpRequest::getQuery()
+{
+    return _query;
+}
+
+const std::string   &HttpRequest::getFragment()
+{
+    return _fragment;
+}
+
+const std::string   &HttpRequest::getBody()
+{
+    return _body;
+}
+
+const std::map<std::string, std::string>    &HttpRequest::getFields()
+{
+    return _headers;
+}
+
+// ================   Utils   ================ //
+/*
 Checks if character is allowed to be in a URI
 Characters allowed as specifed in the RFC:
     Alphanumeric: A-Z a-z 0-9
     Unreserved: - _ . ~
     Reserved:  * ' ( ) ; : @ & = + $ , / ? % # [ ]
 */
-bool    allowedURIChar(char c)
+bool    allowedURIChar(uint8_t c)
 {
     if (c == '!' || (c >= '#' && c <= ';') || c == '=' || (c >= '?' && c <= '[') || c == ']' || c == '_' || (c >= 'a' && c <= 'z') || c == '~')
         return true;
@@ -47,9 +100,9 @@ Characters allowed as specifed in the RFC:
     A-Z a-z 0-9
     ! # $ % & ' * +  -  .  ^  _  `  |  ~               
 */
-bool    allowedFieldNameChar(char c)
+bool    allowedFieldNameChar(uint8_t c)
 {
-    if ( c == '!' || c >= '#' && c <= '\'' || c == '*' || c == '+' || c == '-' || c == '.'
+    if ( c == '!' || (c >= '#' && c <= '\'') || c == '*' || c == '+' || c == '-' || c == '.'
         || (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= '^' && c <= 'z') || c == '|' || c == '~')
         return true;
     return false;
@@ -88,217 +141,214 @@ void    trimFieldValueStr(std::string &string)
     return;
 }
 
+
+// ==========   Member functions   =========== //
+/*
+partial parses the http Request octet by octet
+*/
 void    HttpRequest::parse(char *data, size_t size)
 {
-    char    character;
+    uint8_t character;
 
     if (_error)
         return;
     for (size_t i = 0; i < size; i++)
     {
         character = data[i];
-        switch (_state)
+        switch(_state) 
         {
-            case Method:
+            case Empty_Line_CR:
+                if (character == '\r')
+                {
+                    _state = Empty_Line_LF;
+                    continue;
+                }
                 _method_str.push_back(character);
-                _method_str_len++;
-                if (_method_str.compare(0, _method_str_len, "GET") == 0)
+                _state = Request_Line_Method;
+                break;
+            case Empty_Line_LF:
+                if (character != '\n')
+                {
+                    _error = 400;
+                    return;
+                }
+                _state = Request_Line_Method;
+                break;
+            case Request_Line_Method:
+                _method_str.push_back(character);
+                if(_method_str.compare(0, _method_str.size(), "GET", 0, _method_str.size()) == 0)
                     _method = GET;
-                else if (_method_str.compare(0, _method_str_len, "POST") == 0)
-                    _method = GET;
-                else if (_method_str.compare(0, _method_str_len, "DELETE") == 0)
-                    _method = GET;
+                else if (_method_str.compare(0, _method_str.size(), "POST", 0, _method_str.size()) == 0)
+                    _method = POST;
+                else if (_method_str.compare(0, _method_str.size(), "DELETE", 0, _method_str.size()) == 0)
+                    _method = DELETE;
                 else
                 {
                     _method = NONE;
                     _error = 501;
-                    // error msg
                     return;
                 }
-                if (_method == GET && _method_str_len == 3 ||
-                    _method == POST && _method_str_len == 4 ||
-                    _method == DELETE && _method_str_len == 6)
-                    _state = Space;
+                if ((_method == GET && _method_str.size() == 3) ||
+                    (_method == POST && _method_str.size() == 4) ||
+                    (_method == DELETE && _method_str.size() == 6))
+                    _state = Request_Line_Space;
                 break;
-            case Space:
+            case Request_Line_Space:
                 if (character != ' ')
                 {
                     _error = 400;
-                    // error msg
-                    return;
+                    continue;;
                 }
-                _state = URI_Path_Slash;
+                _state = Request_Line_URI_Slash;
                 break;
-            case URI_Path_Slash:
+            case Request_Line_URI_Slash:
                 if (character != '/')
                 {
                     _error = 400;
-                    // error msg
                     return;
                 }
                 _path.push_back(character);
                 _uri_len++;
-                _state = URI_Path;
+                _state = Request_Line_URI_Path;
                 break;
-            case URI_Path:
-                _uri_len++;
+            case Request_Line_URI_Path:
                 if (character == '?')
                 {
-                    _state = URI_Query;
-                    return;
+                    _state = Request_Line_URI_Query;
+                    continue;
                 }
                 if (character == '#')
                 {
-                    _state = URI_Fragment;
-                    return;
+                    _state = Request_Line_URI_Fragment;
+                    continue;
                 }
                 if (character == ' ')
                 {
-                    _state = Version_H;
-                    return;
-                }
-                if (character == '/')
-                {
-                    _error = 400;
-                    // error msg
-                    return;
+                    _state = Request_Line_H;
+                    continue;
                 }
                 if (!allowedURIChar(character))
                 {
                     _error = 400;
-                    // error msg
                     return;
                 }
                 if (_uri_len > MAX_URI_LENGHT)
                 {
                     _error = 414;
-                    // error msg
                     return;
                 }
                 _path.push_back(character);
-                break;
-            case URI_Query:
                 _uri_len++;
+                break;
+            case Request_Line_URI_Query:
                 if (character == '#')
                 {
-                    _state = URI_Fragment;
-                    return;
+                    _state = Request_Line_URI_Fragment;
+                    continue;
                 }
                 if (character == ' ')
                 {
-                    _state = Version_H;
-                    return;
+                    _state = Request_Line_H;
+                    continue;
                 }
                 if (!allowedURIChar(character))
                 {
                     _error = 400;
-                    // error msg
                     return;
                 }
                 if (_uri_len > MAX_URI_LENGHT)
                 {
                     _error = 414;
-                    // error msg
                     return;
                 }
                 _query.push_back(character);
-                break;
-            case URI_Fragment:
                 _uri_len++;
+                break;
+            case Request_Line_URI_Fragment:
                 if (character == ' ')
                 {
-                    _state = Version_H;
-                    return;
+                    _state = Request_Line_H;
+                    continue;
                 }
                 if (!allowedURIChar(character))
                 {
                     _error = 400;
-                    // error msg
                     return;
                 }
                 if (_uri_len > MAX_URI_LENGHT)
                 {
                     _error = 414;
-                    // error msg
                     return;
                 }
                 _fragment.push_back(character);
+                _uri_len++;
                 break;
-            case Version_H:
+            case Request_Line_H:
                 if (checkPathUnderRoot(_path))
                 {
                     _error = 403;
-                    // error msg
                     return;
                 }
                 if (character != 'H')
                 {
                     _error = 400;
-                    // error msg
                     return;
                 }
-                _state = Version_HT;
+                _state = Request_Line_HT;
                 break;
-            case Version_HT:
+            case Request_Line_HT:
+                 if (character != 'T')
+                {
+                    _error = 400;
+                    return;
+                }
+                _state = Request_Line_HTT;
+                break;
+            case Request_Line_HTT:
                 if (character != 'T')
                 {
                     _error = 400;
-                    // error msg
                     return;
                 }
-                _state = Version_HTT;
+                _state = Request_Line_HTTP;
                 break;
-            case Version_HTT:
-                if (character != 'T')
-                {
-                    _error = 400;
-                    // error msg
-                    return;
-                }
-                _state = Version_HTTP;
-                break;
-            case Version_HTTP:
+            case Request_Line_HTTP:
                 if (character != 'P')
                 {
                     _error = 400;
-                    // error msg
                     return;
                 }
-                _state = Version_HTTP_Slash;
+                _state = Request_Line_HTTP_Slash;
                 break;
-            case Version_HTTP_Slash:
+            case Request_Line_HTTP_Slash:
                 if (character != '/')
                 {
                     _error = 400;
-                    // error msg
                     return;
                 }
-                _state = Version_Major;
+                _state = Request_Line_Version_Major;
                 break;
-            case Version_Major:
+            case Request_Line_Version_Major:
                 if (!isdigit(character))
                 {
                     _error = 400;
-                    // error msg
                     return;
                 }
                 _version_major = character - '0';
-                _state = Version_Dot;
+                _state = Request_Line_Version_Dot;
                 break;
-            case Version_Dot:
+            case Request_Line_Version_Dot:
                 if (character != '.')
                 {
                     _error = 400;
-                    // error msg
                     return;
                 }
-                _state = Version_Minor;
+                _state = Request_Line_Version_Minor;
                 break;
-            case Version_Minor:
+            case Request_Line_Version_Minor:
                 if (!isdigit(character))
                 {
                     _error = 400;
-                    // error msg
                     return;
                 }
                 _version_minor = character - '0';
@@ -308,7 +358,6 @@ void    HttpRequest::parse(char *data, size_t size)
                 if (character != '\r')
                 {
                     _error = 400;
-                    // error msg
                     return;
                 }
                 _state = Request_Line_LF;
@@ -317,163 +366,279 @@ void    HttpRequest::parse(char *data, size_t size)
                 if (character != '\n')
                 {
                     _error = 400;
-                    // error msg
                     return;
                 }
-                _state = Field_Start;
+                _state = Header_Field_Start;
                 break;
-            case Field_Start:
+            case Header_Field_Start:
                 if (character == '\r')
                 {
-                    _state = Field_Blank_Line;
-                    return;
+                    _state = Header_Field_Blank_Line;
+                    continue;
                 }
                 if (!allowedFieldNameChar(character))
                 {
                     _error = 400;
-                    // error msg
                     return;
                 }
                 _header_field_name.push_back(character);
-                _state = Field_Name;
+                _header_len++;
+                if (_header_len > MAX_HEADER_LENGHT)
+                {
+                    _error = 431;
+                    return;
+                }
+                _state = Header_Field_Name;
                 break;
-            case Field_Name:
+            case Header_Field_Name:
                 if (!allowedFieldNameChar(character))
                 {
                     _error = 400;
-                    // error msg
                     return;
                 }
                 if (character == ':')
                 {
-                    _state = Field_Value;
+                    _state = Header_Field_Value;
                     return;
                 }
                 _header_field_name.push_back(character);
-                break;
-            case Field_Value:
-                if (character == '\r')
+                _header_len++;
+                if (_header_len > MAX_HEADER_LENGHT)
                 {
-                    _state = Field_End;
+                    _error = 431;
                     return;
                 }
-                _header_field_value.push_back(character);  
                 break;
-            case Field_End:
-                // set _body_flag and _chuncked_transfer_flag and content-lenght
+            case Header_Field_Value:
+                if (character == '\r')
+                {
+                    _state = Header_Field_End;
+                    return;
+                }
+                _header_field_value.push_back(character);
+                _header_len++;
+                if (_header_len > MAX_HEADER_LENGHT)
+                {
+                    _error = 431;
+                    return;
+                }
+                break;
+            case Header_Field_End:
                 if (character != '\n')
                 {
                     _error = 400;
-                    // error msg
                     return;
                 }
                 trimFieldValueStr(_header_field_value);
-                _it = _fields.find(_header_field_name);
-                if (_it != _fields.end())
+                if (_headers.count(_header_field_name))
                 {
-                    _it->second += ", ";
-                    _it->second += _header_field_value;
+                    _headers[_header_field_name] += ", ";
+                    _headers[_header_field_name] += _header_field_value;
                 }
                 else
-                    _fields.insert(std::pair<std::string, std::string>(_header_field_name, _header_field_value));
+                    _headers.insert(std::pair<std::string, std::string>(_header_field_name, _header_field_value));
                 _header_field_name.clear();
                 _header_field_value.clear();
-                _state = Field_Start;
+                _state = Header_Field_Start;
                 break;
-            case Field_Blank_Line:
+            case Header_Field_Blank_Line:
                 if (character != '\n')
                 {
                     _error = 400;
-                    // error msg
                     return;
                 }
-                if (_body_flag)
+                _state = Parsing_Finished;
+                if (_headers.count("Transfer-Encoding"))
                 {
-                    if (_chuncked_transfer_flag)
-                        _state = Chuncked_Lenght;
-                    _state = Message_Body;
+                    if((_version_major == 1 && _version_minor == 0) || _version_major == 0)
+                    {
+                        _error = 400;
+                        return;
+                    }
+                    if (_headers["Transfer-Encoding"] == "chunked")
+                    {
+                        _body_flag = true;
+                        _chuncked_transfer_flag = true;
+                        _state = Chunk_Lenght;
+                    }
+                    else
+                    {
+                        _error = 501;
+                        return;
+                    }
                 }
+                if (_headers.count("Content-Lenght"))
+                {
+                    if (_chuncked_transfer_flag == true)
+                    {
+                        _error = 400;
+                        return;
+                    }
+                    _body_len = atoi(_headers["Content-Lenght"].c_str());
+                    if (_body_len <= 0)
+                    {
+                        _error = 400;
+                        return;
+                    }
+                    else
+                    {
+                        _body_flag = true;
+                        _state = Message_Body;
+                    }   
+                }
+                if (_body_len > MAX_BODY_SIZE)
+                {
+                    _error = 413;
+                    return;
+                }
+                break;    
+            case Chunk_Lenght:
+                _body_len++;
+                if (isxdigit(character))
+                    _chunk_lenght_str.push_back(character);
+                else if(character == '\r')
+                    _state = Chunk_Lenght_LF;
+                else if(character == ';')
+                    _state = Chunk_Extensions;
                 else
-                    _state = Parsing_Finished;
+                {
+                    _error = 400;
+                    return;
+                }
+                if (_body_len > MAX_BODY_SIZE)
+                {
+                    _error = 413;
+                    return;
+                }
                 break;
-            // case Chuncked_Lenght:
-            //     break;
-            case Message_Body:
-                if (_body_lenght)
+            case Chunk_Extensions:
+                _body_len++;
+                if (character == '\r')
+                    _state = Chunk_Lenght_LF;
+                if (_body_len > MAX_BODY_SIZE)
+                {
+                    _error = 413;
+                    return;
+                }
+                break;
+            case Chunk_Lenght_LF:
+                if (character != '\n')
+                {
+                    _error = 400;
+                    return;
+                }
+                _body_len++;
+                if (_body_len > MAX_BODY_SIZE)
+                {
+                    _error = 413;
+                    return;
+                }
+                _state = Chunk_Data;
+                _ss.str("");
+                _ss.clear();
+                _ss << _chunk_lenght_str;
+                _ss >> std::hex >> _chunk_len;
+                if (_chunk_len == 0)
+                    _state = Chunk_Last_CR;
+                break;
+            case Chunk_Data:
+                if (_chunk_len > 0)
                 {
                     _body.push_back(character);
-                    _body_lenght--;
+                    _body_len++;
+                    _chunk_len--;
                 }
-                if (_body_lenght == 0)
+                if (_body_len > MAX_BODY_SIZE)
+                {
+                    _error = 413;
+                    return;
+                }
+                if (_chunk_len == 0)
+                    _state = Chunk_Data_CR;
+                break;
+            case Chunk_Data_CR:
+                if (character != '\r')
+                {
+                    _error = 400;
+                    return;
+                }
+                _state = Chunk_Data_LF;
+                _body_len++;
+                if (_body_len > MAX_BODY_SIZE)
+                {
+                    _error = 413;
+                    return;
+                }
+                break;
+            case Chunk_Data_LF:
+                if (character != '\n')
+                {
+                    _error = 400;
+                    return;
+                }
+                _state = Chunk_Lenght;
+                _body_len++;
+                if (_body_len > MAX_BODY_SIZE)
+                {
+                    _error = 413;
+                    return;
+                }
+                break;
+            case Chunk_Last_CR:
+                if (character != '\r')
+                {
+                    _error = 400;
+                    return;
+                }
+                _state = Chunk_Last_LF;
+                _body_len++;
+                if (_body_len > MAX_BODY_SIZE)
+                {
+                    _error = 413;
+                    return;
+                }
+                break;
+            case Chunk_Last_LF:
+                if (character != '\n')
+                {
+                    _error = 400;
+                    return;
+                }
+                _state = Chunk_Trailer_Section;
+                _body_len++;
+                if (_body_len > MAX_BODY_SIZE)
+                {
+                    _error = 413;
+                    return;
+                }
+                break;
+            case Chunk_Trailer_Section:
+                _state = Parsing_Finished;
+                break;
+            case Message_Body:
+                if (_body_len)
+                {
+                    _body.push_back(character);
+                    _body_len--;
+                }
+                if (_body_len == 0)
                 {
                     _state = Parsing_Finished;
-                    return ;
+                    continue ;
                 } 
                 break;
             case Parsing_Finished:
+                return;
                 break;
         }
     }
 }
 
-// parse the body
-
-// check the lenght of the header fields and values and how many headers can be there and the lenght of the whole request
-// check body size
-
-// do Percent decoding (what happens if URI starts with %2F (/))
-
-// httpRequest Deconstructor (copy assignment operator ???)
+// ===============   To Do   ================= //
 
 
-/*
-Transfer-Encoding is an HTTP header used to specify the form of encoding used to safely transfer a payload body in HTTP messages. It is primarily used for chunked transfer encoding, which allows data to be sent in a series of chunks rather than as a single block.
-Key Points about Transfer-Encoding:
+// do Percent decoding (what happens if URI starts with %2F (/)) ???
 
-    Purpose: The Transfer-Encoding header allows the sending of data in a way that can be processed as it arrives, rather than requiring the entire body to be present before processing begins. This can be useful for streaming data or large payloads where the sender may not know the total size of the payload in advance.
+// httpRequest Deconstructor
 
-    Chunked Transfer Encoding:
-        This is the most common form of Transfer-Encoding. When using chunked encoding, the body of the message is sent in a series of chunks. Each chunk has its own size defined in bytes, followed by a CRLF (Carriage Return and Line Feed), and the data itself, also followed by a CRLF.
-        The end of the transmission is indicated by a chunk size of zero.
-
-    Header Format: When an HTTP response uses Transfer-Encoding: chunked, it should not include a Content-Length header because the length of the data is not known at the beginning.
-        Example:
-
-         
-        Transfer-Encoding: chunked
-
-    Multiple Encodings: Although chunked is the most well-known, Transfer-Encoding can specify multiple encodings applied sequentially. For example, you might see:
-
-     
-    Transfer-Encoding: gzip, chunked
-
-    Here, the data is first compressed using gzip and then sent as chunked.
-
-    Client and Server Support: Both the client and server must support Transfer-Encoding to properly handle chunked responses. If a client does not understand chunked encoding, it may not process the response correctly.
-
-    Use Cases:
-        Streaming Large Files: Sending files in chunks helps mitigate memory usage on both client and server.
-        Dynamic Content: For web applications generating content dynamically, chunked encoding allows the server to send parts of the response as they are created.
-
-    HTTP/1.1 and Beyond: Transfer-Encoding is defined in HTTP/1.1 as part of the protocol; however, HTTP/2 and later versions handle streaming and framing in a different manner, making some aspects of Transfer-Encoding less relevant.
-
-Example of Chunked Transfer-Encoding:
-
-A typical HTTP response using chunked encoding might look as follows:
-
- 
-HTTP/1.1 200 OK
-Transfer-Encoding: chunked
-Content-Type: text/plain
-
-4
-Wiki
-5
-pedia
-0
-
-In this example, the body consists of two chunks: the first chunk of size 4 sends "Wiki," followed by the second chunk of size 5 sending "pedia." The 0 at the end indicates that there are no more chunks.
-Conclusion
-
-Transfer-Encoding is a useful feature in HTTP for streaming and sending data efficiently, especially when the size of the payload is not known beforehand. Its chunked encoding mechanism enhances the ability to handle large or dynamically generated responses effectively.
-*/
+// check for double // in the path ???
