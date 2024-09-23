@@ -2,16 +2,25 @@
 
 #include "Webserv.hpp"
 
-#define MAX_URI_LENGHT          4096
-#define MAX_HEADER_LENGHT       8192
-#define MAX_BODY_SIZE           1048576
+#define MAX_URI_LENGHT                              4096
+#define MAX_HEADER_LENGHT                           8192
+#define MAX_BODY_SIZE                               1048576
+
+#define BAD_REQUEST                                 400
+#define FORBIDDEN                                   403
+#define NOT_FOUND                                   404
+#define PAYLOAD_TOO_LARGE                           413
+#define URI_TOO_LONG                                414
+#define REQUEST_HEADER_FIELDS_TOO_LARGE             431
+#define NOT_IMPLEMENTED                             501
+
+#define CR                                          '\r'
+#define LF                                          '\n'
 
 enum ParsingState
 {
-    Empty_Line_CR,
-    Empty_Line_LF,
+    Empty_Line,
     Request_Line_Method,
-    Request_Line_Space,
     Request_Line_URI_Slash,
     Request_Line_URI_Path,
     Request_Line_URI_Query,
@@ -33,7 +42,7 @@ enum ParsingState
     Header_Field_Blank_Line,
     Chunk_Lenght,
     Chunk_Extensions,
-    Chunk_Lenght_LF,
+    Chunk_Lenght_End,
     Chunk_Data,
     Chunk_Data_CR,
     Chunk_Data_LF,
@@ -46,10 +55,10 @@ enum ParsingState
 
 enum HttpMethod
 {
+    NONE,
     GET,
     POST,
     DELETE,
-    NONE,
 };
 
 class HttpRequest
@@ -79,7 +88,7 @@ private:
 
 // flags
     bool                                            _body_flag;
-    bool                                            _chuncked_transfer_flag;
+    bool                                            _chunked_transfer_flag;
 
 public:
 // Default Constructor
@@ -89,24 +98,26 @@ public:
     ~HttpRequest();
 
 // Member functions
-    void                                parse(char *data, size_t size);
+    void                                parse(uint8_t *data, size_t size);
 
 // Getters
-    int                                         getError();
-    int                                         getVersionMajor();
-    int                                         getVersionMinor();
-    ParsingState                                getParsingState();
-    HttpMethod                                  getMethod();
-    const std::string                           &getPath();
-    const std::string                           &getQuery();
-    const std::string                           &getFragment();
-    const std::string                           &getBody();
-    const std::map<std::string, std::string>    &getFields();
+    int                                         getError() const;
+    int                                         getVersionMajor() const;
+    int                                         getVersionMinor() const;
+    ParsingState                                getParsingState() const;
+    HttpMethod                                  getMethod() const;
+    const std::string                           &getPath() const;
+    const std::string                           &getQuery() const;
+    const std::string                           &getFragment() const;
+    const std::string                           &getBody() const;
+    const std::map<std::string, std::string>    &getHeaders() const;
 
 };
 
 // util functions
 bool    allowedURIChar(uint8_t c);
 bool    allowedFieldNameChar(uint8_t c);
+bool    allowedFieldValueChar(uint8_t c);
 bool    checkPathUnderRoot(std::string path);
+void    checkPathConsecutiveSlashes(std::string &path);
 void    trimFieldValueStr(std::string &string);
