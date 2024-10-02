@@ -3,7 +3,7 @@
 // =============   Constructor   ============= //
 Server::Server()
 {
-    // 1. create the socket in NON BLOCKING
+    // 1. create the socket
     _fd = socket(AF_INET, SOCK_STREAM, 0);
     if (_fd < 0)
     {
@@ -40,7 +40,6 @@ Server::~Server()
 {
 
 }
-
 
 // Function to handle HTTP response
 std::string getHttpResponse() 
@@ -113,4 +112,3 @@ void    Server::launch()
     (void)valread;
 }
 
-// set the socket to non blocking
