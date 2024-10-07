@@ -24,3 +24,8 @@ int main(int argc, char **argv)
 // to do 
 // -logger
 // if exit (need to close all fds?)
+// start listening for all servers
+// make fds non blocking
+// setup server map
+// give max_body_size to RequestClass
+// structuring the class with comments

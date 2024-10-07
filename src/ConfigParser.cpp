@@ -1,6 +1,12 @@
 #include "../inc/ServerManager.hpp"
 
+// =============   Constructor   ============= //
 ConfigParser::ConfigParser(std::vector<Server> &servers) : _servers(servers)
+{
+}
+
+// ============   Deconstructor   ============ //
+ConfigParser::~ConfigParser()
 {
 }
 

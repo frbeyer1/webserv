@@ -2,18 +2,6 @@
 
 #include "Webserv.hpp"
 
-#define MAX_URI_LENGHT                              4096
-#define MAX_HEADER_LENGHT                           8192
-#define MAX_BODY_SIZE                               1048576
-
-#define BAD_REQUEST                                 400
-#define FORBIDDEN                                   403
-#define NOT_FOUND                                   404
-#define PAYLOAD_TOO_LARGE                           413
-#define URI_TOO_LONG                                414
-#define REQUEST_HEADER_FIELDS_TOO_LARGE             431
-#define NOT_IMPLEMENTED                             501
-
 #define CR                                          '\r'
 #define LF                                          '\n'
 

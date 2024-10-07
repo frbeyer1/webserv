@@ -2,11 +2,6 @@
 
 #include "Webserv.hpp"
 
-#define DEFAULT_PORT                    80
-#define DEFAULT_NAME                    "default"
-#define DEFAULT_ROOT                    "docs/"
-#define DEFAULT_CLIENT_MAX_BODY_SIZE    1048576
-
 typedef struct location_s
 {
     std::vector<HttpMethod>     allowed_methods;
@@ -29,23 +24,28 @@ private:
     std::map<int, std::string>  _error_pages;
     std::vector<location_t>     _locations;
     int                         _server_fd;
+    struct sockaddr_in          _socket_address;
 
 public:
     Server();
+    ~Server();
 
-    void clear();
-    void setup();
+    void        clear();
+    void        setup();
+    int         acceptConnection();
+    void        startListening();
 
-    void setRoot(std::string parameter);
-    void setListen(std::string parameter);
-    void setServerName(std::string parameter);
-    void setClientMaxBodySize(std::string parameter);
-    void setErrorPage(std::string parameter);
-    // setLocation();
+    void        setRoot(std::string parameter);
+    void        setListen(std::string parameter);
+    void        setServerName(std::string parameter);
+    void        setClientMaxBodySize(std::string parameter);
+    void        setErrorPage(std::string parameter);
+    //          setLocation();
 
 
     in_addr_t   getHost() const;
     uint16_t    getPort() const;
+    int         getServerFd() const;
     std::string getSeverName() const;
     std::string getRoot() const;
     size_t      getClientMaxBodySize() const;

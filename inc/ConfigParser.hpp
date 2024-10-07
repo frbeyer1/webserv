@@ -25,7 +25,11 @@ private:
     std::vector<Server> &_servers;
 
 public:
+// Constructor
     ConfigParser(std::vector<Server> &servers);
+
+// Deconstructor
+    ~ConfigParser();
 
     void    parse(std::string config);
 
