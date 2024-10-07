@@ -9,6 +9,8 @@ private:
 
 public:
 
-    void    configure(std::string);
+    void    configure(std::string config);
+    void    setup();
+    void    boot();
 
 };

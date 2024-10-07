@@ -87,7 +87,7 @@ Characters allowed as specifed in the RFC:
     Unreserved: - _ . ~
     Reserved:  * ' ( ) ; : @ & = + $ , / ? % # [ ]
 */
-bool    allowedURIChar(uint8_t c)
+static bool    allowedURIChar(uint8_t c)
 {
     if (c == '!' || (c >= '#' && c <= ';') || c == '=' || (c >= '?' && c <= '[') || c == ']' || c == '_' || (c >= 'a' && c <= 'z') || c == '~')
         return true;
@@ -100,7 +100,7 @@ Characters allowed as specifed in the RFC:
     A-Z a-z 0-9
     ! # $ % & ' * +  -  .  ^  _  `  |  ~               
 */
-bool    allowedFieldNameChar(uint8_t c)
+static bool    allowedFieldNameChar(uint8_t c)
 {
     if ( c == '!' || (c >= '#' && c <= '\'') || c == '*' || c == '+' || c == '-' || c == '.' || (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= '^' && c <= 'z') || c == '|' || c == '~')
         return true;
@@ -112,7 +112,7 @@ Checks if character is allowed to be in a FieldValue
 Characters allowed as specifed in the RFC:
     VCHAR (visible char) SP HTAB            
 */
-bool    allowedFieldValueChar(uint8_t c)
+static bool    allowedFieldValueChar(uint8_t c)
 {
     if (c == '\t' || (c >= ' ' && c <= '~'))
         return true;
@@ -122,7 +122,7 @@ bool    allowedFieldValueChar(uint8_t c)
 /*
 Checks and returns true if the URI path goes under the root directory
 */
-bool    checkPathUnderRoot(std::string path)
+static bool    checkPathUnderRoot(std::string path)
 {
     char    *directory = strtok((char*)path.c_str(), "/");
     int     pos = 0;
@@ -143,7 +143,7 @@ bool    checkPathUnderRoot(std::string path)
 /*
 Checks for consecutive slashes in the path string and deletes them
 */
-void    checkPathConsecutiveSlashes(std::string &path)
+static void    checkPathConsecutiveSlashes(std::string &path)
 {
     bool    slash_flag = false;
 
@@ -164,7 +164,7 @@ void    checkPathConsecutiveSlashes(std::string &path)
 /*
 Deletes optional leading whitespace and optional trailing whitespace of the field line value
 */
-void    trimFieldValueStr(std::string &string)
+static void    trimFieldValueStr(std::string &string)
 {
     while (iswspace(string[0]))
         string.erase(0, 1);

@@ -74,8 +74,6 @@ private:
     int                                             _version_minor;
     std::map<std::string, std::string>              _headers;
     std::string                                     _body;
-
-// help and storage variables
     std::string                                     _method_str;
     std::string                                     _header_field_name;
     std::string                                     _header_field_value;
@@ -85,8 +83,6 @@ private:
     size_t                                          _header_len;
     size_t                                          _body_len;
     size_t                                          _chunk_len;
-
-// flags
     bool                                            _body_flag;
     bool                                            _chunked_transfer_flag;
 
@@ -114,10 +110,3 @@ public:
 
 };
 
-// util functions
-bool    allowedURIChar(uint8_t c);
-bool    allowedFieldNameChar(uint8_t c);
-bool    allowedFieldValueChar(uint8_t c);
-bool    checkPathUnderRoot(std::string path);
-void    checkPathConsecutiveSlashes(std::string &path);
-void    trimFieldValueStr(std::string &string);
