@@ -27,14 +27,21 @@ private:
     struct sockaddr_in          _socket_address;
 
 public:
+// Constructor
     Server();
+
+// Deconstructor
     ~Server();
 
-    void        clear();
-    void        setup();
-    int         acceptConnection();
-    void        startListening();
+// Getters
+    in_addr_t   getHost() const;
+    uint16_t    getPort() const;
+    int         getServerFd() const;
+    std::string getSeverName() const;
+    std::string getRoot() const;
+    size_t      getClientMaxBodySize() const;
 
+// Setters
     void        setRoot(std::string parameter);
     void        setListen(std::string parameter);
     void        setServerName(std::string parameter);
@@ -42,12 +49,9 @@ public:
     void        setErrorPage(std::string parameter);
     //          setLocation();
 
-
-    in_addr_t   getHost() const;
-    uint16_t    getPort() const;
-    int         getServerFd() const;
-    std::string getSeverName() const;
-    std::string getRoot() const;
-    size_t      getClientMaxBodySize() const;
+// Member functions
+    void        setup();
+    void        startListening();
+    int         acceptConnection(); 
 
 };

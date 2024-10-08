@@ -1,7 +1,7 @@
 #include "../inc/HttpRequest.hpp"
 
 // =============   Constructor   ============= //
-HttpRequest::HttpRequest()
+HttpRequest::HttpRequest(int client_max_body_size)
 {
     _state = Empty_Line;
     _error = 0;
@@ -22,6 +22,7 @@ HttpRequest::HttpRequest()
     _chunk_len = 0;
     _body_flag = false;
     _chunked_transfer_flag = false;
+    _client_max_body_size = client_max_body_size;
 }
 
 // ============   Deconstructor   ============ //
@@ -515,7 +516,7 @@ void    HttpRequest::parse(uint8_t *data, size_t size)
                     _error = BAD_REQUEST;
                     return;
                 }
-                if (_body_len > MAX_BODY_SIZE)
+                if (_body_len > _client_max_body_size)
                 {
                     _error = PAYLOAD_TOO_LARGE;
                     return;
@@ -540,7 +541,7 @@ void    HttpRequest::parse(uint8_t *data, size_t size)
                 _error = BAD_REQUEST;
                 return;
             }
-            if (_body_len > MAX_BODY_SIZE)
+            if (_body_len > _client_max_body_size)
             {
                 _error = PAYLOAD_TOO_LARGE;
                 return;
@@ -551,7 +552,7 @@ void    HttpRequest::parse(uint8_t *data, size_t size)
             _body_len++;
             if (ch == CR)
                 _state = Chunk_Lenght_End;
-            if (_body_len > MAX_BODY_SIZE)
+            if (_body_len > _client_max_body_size)
             {
                 _error = PAYLOAD_TOO_LARGE;
                 return;
@@ -564,7 +565,7 @@ void    HttpRequest::parse(uint8_t *data, size_t size)
                 _error = BAD_REQUEST;
                 return;
             }
-            if (_body_len > MAX_BODY_SIZE)
+            if (_body_len > _client_max_body_size)
             {
                 _error = PAYLOAD_TOO_LARGE;
                 return;
@@ -584,7 +585,7 @@ void    HttpRequest::parse(uint8_t *data, size_t size)
                 _body_len++;
                 _chunk_len--;
             }
-            if (_body_len > MAX_BODY_SIZE)
+            if (_body_len > _client_max_body_size)
             {
                 _error = PAYLOAD_TOO_LARGE;
                 return;
@@ -598,7 +599,7 @@ void    HttpRequest::parse(uint8_t *data, size_t size)
                 _error = BAD_REQUEST;
                 return;
             }
-            if (_body_len > MAX_BODY_SIZE)
+            if (_body_len > _client_max_body_size)
             {
                 _error = PAYLOAD_TOO_LARGE;
                 return;
@@ -612,7 +613,7 @@ void    HttpRequest::parse(uint8_t *data, size_t size)
                 _error = BAD_REQUEST;
                 return;
             }
-            if (_body_len > MAX_BODY_SIZE)
+            if (_body_len > _client_max_body_size)
             {
                 _error = PAYLOAD_TOO_LARGE;
                 return;
@@ -626,7 +627,7 @@ void    HttpRequest::parse(uint8_t *data, size_t size)
                 _error = BAD_REQUEST;
                 return;
             }
-            if (_body_len > MAX_BODY_SIZE)
+            if (_body_len > _client_max_body_size)
             {
                 _error = PAYLOAD_TOO_LARGE;
                 return;
@@ -640,7 +641,7 @@ void    HttpRequest::parse(uint8_t *data, size_t size)
                 _error = BAD_REQUEST;
                 return;
             }
-            if (_body_len > MAX_BODY_SIZE)
+            if (_body_len > _client_max_body_size)
             {
                 _error = PAYLOAD_TOO_LARGE;
                 return;

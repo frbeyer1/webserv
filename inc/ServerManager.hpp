@@ -11,12 +11,18 @@ private:
     int                       _epoll_fd;
 
 public:
+// Constructor
     ServerManager();
+
+// Deconstructor
     ~ServerManager();
 
+// Member functions
     void    configure(std::string config);
     void    setup();
     void    boot();
     void    acceptNewConnection(int fd);
+    void    closeConnection(int fd);
+    void    checkTimeout();
 
 };

@@ -17,7 +17,8 @@ static std::string    readConfig(std::string config)
 
     if (file.fail())
     {
-        std::cerr << "Error: Unable to open file " << config << std::endl;
+        std::string msg("Unable to open file: " + config);
+        Logger::log(RED, ERROR, msg.c_str());
         exit(EXIT_FAILURE);
     }
     buffer << file.rdbuf();
@@ -63,7 +64,7 @@ static int findServerBlock(std::string &content, int i)
         }
         else
         {
-            std::cerr << "Error: Config file misconfigured" << std::endl;
+            Logger::log(RED, ERROR, "Config file misconfigured: found something else than server block");
             exit(EXIT_FAILURE);
         }
     }
@@ -118,7 +119,7 @@ static std::string getParameter(std::string &content, int &i)
         }
         if (i == content.length() || content[i] == '\n')
         {
-            std::cerr << "Error: Config file misconfigured: missing ';'" << std::endl;
+            Logger::log(RED, ERROR, "Config file misconfigured: missing ';'");
             exit(EXIT_FAILURE);
         }
     }
@@ -156,7 +157,7 @@ static int getDirective(std::string &content, int i, Server &server)
         //     setLocation(content, i);
         //     break;
         case UNKNOWN:
-            std::cerr << "Error: Config file misconfigured: wrong Directive" << std::endl;
+            Logger::log(RED, ERROR, "Config file misconfigured: invalid directive");
             exit(EXIT_FAILURE);
     }
 }
@@ -164,10 +165,11 @@ static int getDirective(std::string &content, int i, Server &server)
 void    ConfigParser::parse(std::string config)
 {
     std::string content(readConfig(config));
-    Server      server;
 
     for(size_t i = 0; i < content.length(); i++)
     {
+        Server      server;
+
         i = findServerBlock(content, i);
         for (;i < content.length(); i++)
         {
@@ -179,6 +181,5 @@ void    ConfigParser::parse(std::string config)
             i = getDirective(content, i, server);
         }
         _servers.push_back(server);
-        server.clear();
     }
 }

@@ -79,20 +79,7 @@ void    Server::setErrorPage(std::string parameter)
 
 }
 
-
-
-void    Server::clear()
-{
-    // _host = ;
-    _port = DEFAULT_PORT;
-    _server_name = DEFAULT_NAME;
-    _root = DEFAULT_ROOT;
-    _client_max_body_size = DEFAULT_CLIENT_MAX_BODY_SIZE;
-    // _error_pages = ;
-    // _locations = ;
-    // _socket_address =
-}
-
+// ==========   Member functions   =========== //
 /*
 function to create and setup an tcp server socket
 */
@@ -102,14 +89,14 @@ void    Server::setup()
     _server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (_server_fd < 0)
     {
-        std::cerr << "Error: Could not set up socket" << std::endl;
+        Logger::log(RED, ERROR, "Could not set up socket");
         exit(EXIT_FAILURE);
     }
     // 2. sets the socket to reuse ports
     const int opt = 1;
     if (setsockopt(_server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
     {
-        std::cerr << "Error: setsockopt(SO_REUSEADDR) failed" << std::endl;
+        Logger::log(RED, ERROR, "setsockopt (SO_REUSEADDR) failed");
         exit(EXIT_FAILURE);
     }
     // 3. setup and bind the address to the socket
@@ -119,7 +106,7 @@ void    Server::setup()
     memset(_socket_address.sin_zero, '\0', sizeof(_socket_address.sin_zero));
     if (bind(_server_fd, (struct sockaddr *)&_socket_address, sizeof(_socket_address)) < 0)
     {
-        std::cerr << "Error: Could not bind socket" << std::endl;
+        Logger::log(RED, ERROR, "Could not bind socket");
         exit(EXIT_FAILURE);
     }
 }
@@ -131,13 +118,13 @@ void    Server::startListening()
 {
     if (listen(_server_fd, BACKLOG) < 0)
     {
-        std::cerr << "Error: Socket could not listen" << std::endl;
+        Logger::log(RED, ERROR, "Socket could not listen");
         exit(EXIT_FAILURE);
     }
 }
 
 /*
-accept connection
+accept new connection
 */
 int    Server::acceptConnection()
 {
@@ -146,7 +133,7 @@ int    Server::acceptConnection()
 
     if ((new_socket = accept(_server_fd, (struct sockaddr *)&_socket_address, (socklen_t*)&addrlen))<0)
     {
-        std::cerr << "Error: Socket could not accept connection" << std::endl;            
+        Logger::log(RED, ERROR, "Socket could not accept connection");
         exit(EXIT_FAILURE);        
     }
     return (new_socket);

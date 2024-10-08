@@ -4,7 +4,6 @@
 #include <string.h>
 #include <fcntl.h>
 
-/*   Networking   */
 #include <sys/socket.h>
 #include <sys/epoll.h> 
 #include <netinet/in.h>
@@ -13,8 +12,8 @@
 #include <cstdint>
 #include <sstream>
 #include <fstream>
+#include <ctime>
 
-/*   STL Container   */
 #include <map>
 #include <vector>
 
@@ -22,9 +21,10 @@
 #include "HttpRequest.hpp"
 #include "Server.hpp"
 #include "ConfigParser.hpp"
+#include "Client.hpp"
+#include "Logger.hpp"
 
-
-/*   Error Codes   */
+/*   HTTP Error Codes   */
 #define BAD_REQUEST                                 400
 #define FORBIDDEN                                   403
 #define NOT_FOUND                                   404
@@ -33,20 +33,27 @@
 #define REQUEST_HEADER_FIELDS_TOO_LARGE             431
 #define NOT_IMPLEMENTED                             501
 
-/*   Default Settings   */
+/*   Default Config Settings   */
+#define DEFAULT_CONFIG                              "conf/default.conf"
 #define DEFAULT_PORT                                80
 #define DEFAULT_NAME                                "default"
 #define DEFAULT_ROOT                                "docs/"
 #define DEFAULT_CLIENT_MAX_BODY_SIZE                1048576
 
+/*   Technical Settings   */
 #define MAX_EPOLL_EVENTS                            10
 #define BACKLOG                                     128
-
 #define MAX_URI_LENGHT                              4096
 #define MAX_HEADER_LENGHT                           8192
+#define CLIENT_CONNECTION_TIMEOUT                   60
+#define LOGFILE_NAME                                "webserv.log"
 
-#define MAX_BODY_SIZE                               1048576
-
-
-
-
+/*   ANSI escape codes for colors   */
+#define RESET                                       "\033[0m"
+#define RED                                         "\033[31m"
+#define WHITE                                       "\033[37m"
+#define CYAN                                        "\033[36m"
+#define GREEN                                       "\033[32m"
+#define BLUE                                        "\033[34m"
+#define YELLOW                                      "\033[33m"
+#define MAGENTA                                     "\033[35m"

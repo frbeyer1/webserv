@@ -31,6 +31,7 @@ public:
 // Deconstructor
     ~ConfigParser();
 
+// Member functions
     void    parse(std::string config);
 
 };

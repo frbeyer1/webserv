@@ -73,16 +73,14 @@ private:
     size_t                                          _chunk_len;
     bool                                            _body_flag;
     bool                                            _chunked_transfer_flag;
+    int                                             _client_max_body_size;
 
 public:
 // Constructor
-    HttpRequest();
+    HttpRequest(int client_max_body_size);
 
 // Deconstructor
     ~HttpRequest();
-
-// Member functions
-    void                                parse(uint8_t *data, size_t size);
 
 // Getters
     int                                         getError() const;
@@ -95,6 +93,9 @@ public:
     const std::string                           &getFragment() const;
     const std::string                           &getBody() const;
     const std::map<std::string, std::string>    &getHeaders() const;
+
+// Member functions
+    void                                        parse(uint8_t *data, size_t size);
 
 };
 

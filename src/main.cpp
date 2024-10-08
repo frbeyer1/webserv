@@ -5,12 +5,12 @@ int main(int argc, char **argv)
     std::string config;
 
     if (argc == 1)
-        config = "conf/default.conf";
+        config = DEFAULT_CONFIG;
     else if (argc == 2)
         config = argv[1];
     else
     {
-        // error msg
+        Logger::log(RED, ERROR, "Invalid Arguments: try './webserv [configuration file]'");
         return (EXIT_FAILURE);
     }
     ServerManager   master;
@@ -21,11 +21,12 @@ int main(int argc, char **argv)
     return (EXIT_SUCCESS);
 }
 
-// to do 
-// -logger
 // if exit (need to close all fds?)
-// start listening for all servers
+
 // make fds non blocking
-// setup server map
+
 // give max_body_size to RequestClass
-// structuring the class with comments
+
+// max connections???
+
+// close connection after response or use timeouts
