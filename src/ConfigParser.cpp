@@ -16,7 +16,7 @@ ConfigParser::~ConfigParser()
 /*
 converts an string ip into an numeric ip address
 */
-static uint32_t ipStringToNumeric(const std::string& ip)
+uint32_t ipStringToNumeric(const std::string& ip)
 {
     std::stringstream   ss(ip);
     std::string         segment;
@@ -41,7 +41,7 @@ static uint32_t ipStringToNumeric(const std::string& ip)
 /*
 parses an parameter string of the config and sets root on the corresponding server
 */
-static void    handleRoot(std::string parameter, Server &server)
+static void handleRoot(std::string parameter, Server &server)
 {
 
 }
@@ -49,7 +49,7 @@ static void    handleRoot(std::string parameter, Server &server)
 /*
 parses an parameter string of the config and sets port and host on the corresponding server
 */
-static void    handleListen(std::string parameter, Server &server)
+static void handleListen(std::string parameter, Server &server)
 {
     std::string port_str;
     std::string ip_str;
@@ -62,8 +62,8 @@ static void    handleListen(std::string parameter, Server &server)
         if (parameter[i] == ':')
         {
             found_host = true;
-            if (parameter.compare(0, i, "default:") == 0)
-                ip_str = DEFAULT_HOST;
+            if (parameter.compare(0, i, "localhost:") == 0)
+                ip_str = "127.0.0.1";
             else
                 ip_str = parameter.substr(0, i - 1);
             port_str = parameter.substr(i + 1, parameter.length());
@@ -98,29 +98,87 @@ static void    handleListen(std::string parameter, Server &server)
         }
     }
     port = atoi(port_str.c_str());
+    if (port < 1 || port > 65636)
+    {
+        Logger::log(RED, ERROR, "Config file misconfigured: listen directive: port invalid");
+        exit(EXIT_FAILURE);
+    }
     server.setPort(port);
 }
 
 /*
 parses an parameter string of the config and sets the server_name on the corresponding server
+valid characters:
+    - Letters (a-z, A-Z)
+    - Digits (0-9)
+    - Hyphens (-)
+    - Periods (.)
+    - Tildes (~)
+    - Underscores (_)
 */
-static void    handleServerName(std::string parameter, Server &server)
+static void handleServerName(std::string parameter, Server &server)
 {
-
+    for (int i = 0; i < parameter.length(); i++)
+    {
+        if ((parameter[i] < 'a' || parameter[i] > 'z') && (parameter[i] < 'A' || parameter[i] > 'Z') 
+            && (parameter[i] < '0' || parameter[i] > '9') && parameter[i] != '.' && parameter[i] != '-' && parameter[i] != '~' && parameter[i] != '_' )
+        {
+            Logger::log(RED, ERROR, "Config file misconfigured: server_name directive: invalid character");
+            exit(EXIT_FAILURE);
+        }
+    }
+    server.setServerName(parameter);
 }
 
 /*
 parses an parameter string of the config and sets the client_max_body_size on the corresponding server
 */
-static void    handleClientMaxBodySize(std::string parameter, Server &server)
+static void handleClientMaxBodySize(std::string parameter, Server &server)
 {
+    size_t  size;
 
+    for (int i = 0; i < parameter.length(); i ++)
+    {
+        if (!isdigit(parameter[i]))
+        {
+            Logger::log(RED, ERROR, "Config file misconfigured: client_max_body_size directive: invalid character");
+            exit(EXIT_FAILURE);
+        }
+    }
+    size = atoi(parameter.c_str());
+    server.setClientMaxBodySize(size);
 }
 
 /*
 parses an parameter string of the config and sets custom error pages on the corresponding server
 */
-static void    handleErrorPage(std::string parameter, Server &server)
+static void handleErrorPage(std::string parameter, Server &server)
+{
+
+}
+
+
+static void handleAllowedMethods(std::string parameter, location_t &location)
+{
+
+}
+
+static void handleRedirection(std::string parameter, location_t &location)
+{
+
+}
+
+static void handleAlias(std::string parameter, location_t &location)
+{
+
+}
+
+static void handleAutoIndex(std::string parameter, location_t &location)
+{
+
+}
+
+static void handleIndex(std::string parameter, location_t &location)
 {
 
 }
@@ -261,36 +319,50 @@ std::string ConfigParser::_getParameter()
     return (parameter);
 }
 
-void    ConfigParser::_getLocation(Server &server)
-{
-    Directive   type;
-    location_t  location;
+// void    ConfigParser::_getLocation(Server &server)
+// {
+//     Directive   type;
+//     location_t  location;
+    
 
-    // type = getDirectiveType()
-    switch (type)
-    {
-        case ALLOWED_METHODS:
-            // handleAllowedMethods(parameter, location);
-            break;
-        case REDIRECTION:
-            // handleRedirection(parameter, location);
-            break;
-        case ALIAS:
-            // handleAlias(parameter, location);
-            break;
-        case AUTOINDEX:
-            // handleAutoIndex(parameter, location);
-            break;
-        case INDEX:
-            // handleIndex(parameter, location);
-            break;
-        // case ...:
-        default:
-            Logger::log(RED, ERROR, "Config file misconfigured: invalid directive");
-            exit(EXIT_FAILURE);
-    }
-    server.setLocation(location);
-}
+//     // save path
+//     for (int i = 0; i < _content.length(); _i++)
+//     {
+//         std::string parameter;
+//         if (_content[_i] == '}')
+//         {
+//             _i++;
+//             break ;
+//         }
+//         _skipWhiteSpaces();
+//         type = _getDirectiveType();
+//         _skipWhiteSpaces();
+//         parameter = _getParameter();
+//         switch (type) {
+
+//         case ALLOWED_METHODS:
+//             handleAllowedMethods(parameter, location);
+//             break;
+//         case REDIRECTION:
+//             handleRedirection(parameter, location);
+//             break;
+//         case ALIAS:
+//             handleAlias(parameter, location);
+//             break;
+//         case AUTOINDEX:
+//             handleAutoIndex(parameter, location);
+//             break;
+//         case INDEX:
+//             handleIndex(parameter, location);
+//             break;
+//         // case ...:
+//         default:
+//             Logger::log(RED, ERROR, "Config file misconfigured: invalid directive");
+//             exit(EXIT_FAILURE);
+//         }
+//     }
+//     server.setLocation(location);
+// }
 
 /*
 parses the directive dependent of the directive type
@@ -303,30 +375,31 @@ void    ConfigParser::_getDirective(Server &server)
     _skipWhiteSpaces();
     type = _getDirectiveType();
     _skipWhiteSpaces();
-    parameter = _getParameter();
-    switch (type)
-    {
-        case ROOT:
-            handleRoot(parameter, server);
-            break;
-        case LISTEN:
-            handleListen(parameter, server);
-            break;
-        case SERVER_NAME:
-            handleServerName(parameter, server);
-            break;
-        case CLIENT_MAX_BODY_SIZE:
-            handleClientMaxBodySize(parameter, server);
-            break;
-        case ERROR_PAGE:
-            handleErrorPage(parameter, server);
-            break;
-        case LOCATION:
-            _getLocation(server);
-            break;
-        default:
-            Logger::log(RED, ERROR, "Config file misconfigured: invalid directive");
-            exit(EXIT_FAILURE);
+    if (type != LOCATION)
+        parameter = _getParameter();
+    switch (type) {
+    
+    case ROOT:
+        handleRoot(parameter, server);
+        break;
+    case LISTEN:
+        handleListen(parameter, server);
+        break;
+    case SERVER_NAME:
+        handleServerName(parameter, server);
+        break;
+    case CLIENT_MAX_BODY_SIZE:
+        handleClientMaxBodySize(parameter, server);
+        break;
+    case ERROR_PAGE:
+        handleErrorPage(parameter, server);
+        break;
+    case LOCATION:
+        // _getLocation(server);
+        break;
+    default:
+        Logger::log(RED, ERROR, "Config file misconfigured: invalid directive");
+        exit(EXIT_FAILURE);
     }
 }
 
@@ -351,6 +424,11 @@ void    ConfigParser::parse(std::string config)
                 break ;
             }
             _getDirective(server);
+        }
+        if (_content[_i] != '}')
+        {
+            Logger::log(RED, ERROR, "Config file misconfigured: missing '}'");
+            exit(EXIT_FAILURE);
         }
         _servers.push_back(server);
     }

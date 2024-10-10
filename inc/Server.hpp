@@ -45,8 +45,8 @@ public:
     void        setRoot(std::string root);
     void        setPort(uint16_t port);
     void        setHost(in_addr_t host);
-    void        setServerName(std::string parameter);
-    void        setClientMaxBodySize(std::string parameter);
+    void        setServerName(std::string server_name);
+    void        setClientMaxBodySize(size_t client_max_body_size);
     void        setErrorPage(std::string parameter);
     void        setLocation(location_t location);
 

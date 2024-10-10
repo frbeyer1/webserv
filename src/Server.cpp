@@ -3,7 +3,11 @@
 // =============   Constructor   ============= //
 Server::Server()
 {
-    // _host = ;
+    if (_host = ipStringToNumeric(DEFAULT_HOST))
+    {
+        Logger::log(RED, ERROR, "Webserv header misconfigured: DEFAULT_HOST: ip invalid");
+        exit(EXIT_FAILURE);
+    }
     _port = DEFAULT_PORT;
     _server_name = DEFAULT_NAME;
     _root = DEFAULT_ROOT;
@@ -63,14 +67,14 @@ void    Server::setHost(in_addr_t host)
     _host = host;
 }
 
-void    Server::setServerName(std::string parameter)
+void    Server::setServerName(std::string server_name)
 {
-    
+    _server_name = server_name;
 }
 
-void    Server::setClientMaxBodySize(std::string parameter)
+void    Server::setClientMaxBodySize(size_t client_max_body_size)
 {
-    
+    _client_max_body_size = client_max_body_size;
 }
 
 void    Server::setErrorPage(std::string parameter)

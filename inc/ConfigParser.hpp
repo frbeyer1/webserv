@@ -47,3 +47,6 @@ public:
     void    parse(std::string config);
 
 };
+
+// Utils
+uint32_t ipStringToNumeric(const std::string& ip);

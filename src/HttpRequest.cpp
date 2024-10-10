@@ -667,9 +667,3 @@ void    HttpRequest::parse(uint8_t *data, size_t size)
         }
     }
 }
-
-// ==============   TO DO   ================== //
-
-// parse the chunk extensions and trailer section or keep ignoring ???
-
-// do Percent decoding ???

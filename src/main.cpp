@@ -24,15 +24,23 @@ int main(int argc, char **argv)
     return (EXIT_SUCCESS);
 }
 
+// ==============   TO DO   ================== //
+
+// HttpRequestParser:
+//  -    parse the chunk extensions and trailer section or keep ignoring ???
+//  -    do Percent decoding ???
+
 // if exit (need to close all fds?)
 
 // make fds non blocking
 // server sockets also non blocking???
-
-// give max_body_size to RequestClass
 
 // max connections???
 
 // close connection after response or use timeouts
 
 // max config lenght???
+
+// add logger info and debug msgs
+
+// init default error pages
