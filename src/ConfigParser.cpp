@@ -3,6 +3,8 @@
 // =============   Constructor   ============= //
 ConfigParser::ConfigParser(std::vector<Server> &servers) : _servers(servers)
 {
+    _content = "";
+    _i = 0;
 }
 
 // ============   Deconstructor   ============ //
@@ -10,7 +12,124 @@ ConfigParser::~ConfigParser()
 {
 }
 
-static std::string    readConfig(std::string config)
+// ================   Utils   ================ //
+/*
+converts an string ip into an numeric ip address
+*/
+static uint32_t ipStringToNumeric(const std::string& ip)
+{
+    std::stringstream   ss(ip);
+    std::string         segment;
+    uint32_t            numericIp = 0;
+    int                 segmentCount = 0;
+
+    while (std::getline(ss, segment, '.'))
+    {
+        if (segmentCount >= 4)
+            return (-1);
+        int segmentValue = std::atoi(segment.c_str());
+        if (segmentValue < 0 || segmentValue > 255)
+            return (-1);
+        numericIp = (numericIp << 8) | segmentValue;
+        segmentCount++;
+    }
+    if (segmentCount != 4)
+        return (-1);
+    return (numericIp);
+}
+
+/*
+parses an parameter string of the config and sets root on the corresponding server
+*/
+static void    handleRoot(std::string parameter, Server &server)
+{
+
+}
+
+/*
+parses an parameter string of the config and sets port and host on the corresponding server
+*/
+static void    handleListen(std::string parameter, Server &server)
+{
+    std::string port_str;
+    std::string ip_str;
+    bool        found_host = false;
+    in_addr_t   host;
+    uint16_t    port;
+
+    for (int i = 0; i < parameter.length(); i++)
+    {
+        if (parameter[i] == ':')
+        {
+            found_host = true;
+            if (parameter.compare(0, i, "default:") == 0)
+                ip_str = DEFAULT_HOST;
+            else
+                ip_str = parameter.substr(0, i - 1);
+            port_str = parameter.substr(i + 1, parameter.length());
+            break ;
+        }
+    }
+    if (!found_host)
+    {
+        port_str = parameter;
+        ip_str = DEFAULT_HOST;
+    }
+    for (int i = 0; i < ip_str.length(); i++)
+    {
+        if (!isdigit(ip_str[i]) && ip_str[i] != '.')
+        {
+            Logger::log(RED, ERROR, "Config file misconfigured: listen directive: ip invalid");
+            exit(EXIT_FAILURE);
+        }
+    }
+    if (host = ipStringToNumeric(ip_str) < 0)
+    {
+        Logger::log(RED, ERROR, "Config file misconfigured: listen directive: ip invalid");
+        exit(EXIT_FAILURE);
+    }
+    server.setHost(host);
+    for (int i = 0; i < port_str.length(); i++)
+    {
+        if (!isdigit(port_str[i]))
+        {
+            Logger::log(RED, ERROR, "Config file misconfigured: listen directive: port invalid");
+            exit(EXIT_FAILURE);
+        }
+    }
+    port = atoi(port_str.c_str());
+    server.setPort(port);
+}
+
+/*
+parses an parameter string of the config and sets the server_name on the corresponding server
+*/
+static void    handleServerName(std::string parameter, Server &server)
+{
+
+}
+
+/*
+parses an parameter string of the config and sets the client_max_body_size on the corresponding server
+*/
+static void    handleClientMaxBodySize(std::string parameter, Server &server)
+{
+
+}
+
+/*
+parses an parameter string of the config and sets custom error pages on the corresponding server
+*/
+static void    handleErrorPage(std::string parameter, Server &server)
+{
+
+}
+
+// ======   Private member functions   ======= //
+/*
+reads and saves the config file
+*/
+void    ConfigParser::_readConfig(std::string config)
 {
     std::ifstream       file(config);
     std::stringstream   buffer;
@@ -23,44 +142,54 @@ static std::string    readConfig(std::string config)
     }
     buffer << file.rdbuf();
     file.close();
-    return (buffer.str());
+    _content = buffer.str();
 }
 
-static int skipComment(std::string &content, int i)
+/*
+skipping comments in the config file string
+*/
+void    ConfigParser::_skipComment()
 {
-    if (content[i] == '#')
+    if (_content[_i] == '#')
     {
-        while (i < content.length() && content[i] != '\n')
-            i++;
-        if (content[i] == '/n')
-            i++;
-        return (i);
+        while (_i < _content.length() && _content[_i] != '\n')
+            _i++;
+        if (_content[_i] == '/n')
+            _i++;
+        return ;
     }
-    return (i);
 }
 
-static int skipWhiteSpaces(std::string &content, int i)
+/*
+skipping whitespaces in the config file string
+*/
+void    ConfigParser::_skipWhiteSpaces()
 {
-    for (; i < content.length(); i++)
+    for (; _i < _content.length(); _i++)
     {
-        i = skipComment(content, i);
-        if (!isspace(content[i]))
-            return (i);
+        _skipComment();
+        if (!iswspace(_content[_i]))
+            return ;
     }
-    return (i);
 }
 
-static int findServerBlock(std::string &content, int i)
+/*
+finds next server block in the config file string
+*/
+void    ConfigParser::_findServerBlock()
 {
-    for (; i < content.length(); i++)
+    for (; _i < _content.length(); _i++)
     {
-        i = skipWhiteSpaces(content, i);
-        if (content.compare(i, 6, "Server") == 0)
+        _skipWhiteSpaces();
+        if (_content.compare(_i, 6, "Server") == 0)
         {
-            i += 6;
-            i = skipWhiteSpaces(content, i);
-            if (content[i] == '{')
-                return (i + 1);
+            _i += 6;
+            _skipWhiteSpaces();
+            if (_content[_i] == '{')
+            {
+                _i++;
+                return;
+            }
         }
         else
         {
@@ -68,10 +197,12 @@ static int findServerBlock(std::string &content, int i)
             exit(EXIT_FAILURE);
         }
     }
-    return i;
 }
 
-static Directive getDirectiveType(std::string &content, int &i)
+/*
+returns Directive type
+*/
+Directive ConfigParser::_getDirectiveType()
 {
     const std::map<std::string, Directive> keywordMap = {
         {"root", ROOT},
@@ -92,10 +223,10 @@ static Directive getDirectiveType(std::string &content, int &i)
         const std::string&  keyword = it->first;
         Directive           responseCode = it->second;
 
-        if (content.compare(i, keyword.length(), keyword) == 0)
+        if (_content.compare(_i, keyword.length(), keyword) == 0)
         {
-            i += keyword.length();
-            if (content[i] == ' ')
+            _i += keyword.length();
+            if (_content[_i] == ' ')
                 return (responseCode);
             else
                 break ;
@@ -104,81 +235,122 @@ static Directive getDirectiveType(std::string &content, int &i)
     return (UNKNOWN);
 }
 
-static std::string getParameter(std::string &content, int &i)
+/*
+returns the parameter of an directive as a string
+*/
+std::string ConfigParser::_getParameter()
 {
     std::string parameter;
     int         start;
 
-    start = i;
-    for (; i < content.length(); i++)
+    start = _i;
+    for (; _i < _content.length(); _i++)
     {
-        if (content[i] == ';')
+        if (_content[_i] == ';')
         {
-            i++;
+            _i++;
             break;
         }
-        if (i == content.length() || content[i] == '\n')
+        if (_i == _content.length() || _content[_i] == '\n')
         {
             Logger::log(RED, ERROR, "Config file misconfigured: missing ';'");
             exit(EXIT_FAILURE);
         }
     }
-    parameter = content.substr(start, i);
+    parameter = _content.substr(start, _i);
     return (parameter);
 }
 
-static int getDirective(std::string &content, int i, Server &server)
+void    ConfigParser::_getLocation(Server &server)
+{
+    Directive   type;
+    location_t  location;
+
+    // type = getDirectiveType()
+    switch (type)
+    {
+        case ALLOWED_METHODS:
+            // handleAllowedMethods(parameter, location);
+            break;
+        case REDIRECTION:
+            // handleRedirection(parameter, location);
+            break;
+        case ALIAS:
+            // handleAlias(parameter, location);
+            break;
+        case AUTOINDEX:
+            // handleAutoIndex(parameter, location);
+            break;
+        case INDEX:
+            // handleIndex(parameter, location);
+            break;
+        // case ...:
+        default:
+            Logger::log(RED, ERROR, "Config file misconfigured: invalid directive");
+            exit(EXIT_FAILURE);
+    }
+    server.setLocation(location);
+}
+
+/*
+parses the directive dependent of the directive type
+*/
+void    ConfigParser::_getDirective(Server &server)
 {
     std::string parameter;
     Directive   type;
 
-    i = skipWhiteSpaces(content, i);
-    type = getDirectiveType(content, i);
-    i = skipWhiteSpaces(content, i);
-    parameter = getParameter(content, i);
+    _skipWhiteSpaces();
+    type = _getDirectiveType();
+    _skipWhiteSpaces();
+    parameter = _getParameter();
     switch (type)
     {
         case ROOT:
-            server.setRoot(parameter);
+            handleRoot(parameter, server);
             break;
         case LISTEN:
-            server.setListen(parameter);
+            handleListen(parameter, server);
             break;
         case SERVER_NAME:
-            server.setServerName(parameter);
+            handleServerName(parameter, server);
             break;
         case CLIENT_MAX_BODY_SIZE:
-            server.setClientMaxBodySize(parameter);
+            handleClientMaxBodySize(parameter, server);
             break;
         case ERROR_PAGE:
-            server.setErrorPage(parameter);
+            handleErrorPage(parameter, server);
             break;
-        // case LOCATION:
-        //     setLocation(content, i);
-        //     break;
-        case UNKNOWN:
+        case LOCATION:
+            _getLocation(server);
+            break;
+        default:
             Logger::log(RED, ERROR, "Config file misconfigured: invalid directive");
             exit(EXIT_FAILURE);
     }
 }
 
+// ==========   Member functions   =========== //
+/*
+parses the config file and adds the servers with the right settigs to the server_vector 
+*/
 void    ConfigParser::parse(std::string config)
 {
-    std::string content(readConfig(config));
+    _readConfig(config);
 
-    for(size_t i = 0; i < content.length(); i++)
+    for(;_i < _content.length(); _i++)
     {
         Server      server;
 
-        i = findServerBlock(content, i);
-        for (;i < content.length(); i++)
+        _findServerBlock();
+        for (;_i < _content.length(); _i++)
         {
-            if (content[i] == '}')
+            if (_content[_i] == '}')
             {
-                i++;
+                _i++;
                 break ;
             }
-            i = getDirective(content, i, server);
+            _getDirective(server);
         }
         _servers.push_back(server);
     }

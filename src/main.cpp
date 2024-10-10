@@ -4,6 +4,9 @@ int main(int argc, char **argv)
 {
     std::string config;
 
+    Logger::setState(LOGGER_STATE);
+    Logger::setOutputMode(LOGGER_OUTPUT_MODE);
+    Logger::setLogLvl(LOGGER_LOG_LVL);
     if (argc == 1)
         config = DEFAULT_CONFIG;
     else if (argc == 2)
@@ -24,9 +27,12 @@ int main(int argc, char **argv)
 // if exit (need to close all fds?)
 
 // make fds non blocking
+// server sockets also non blocking???
 
 // give max_body_size to RequestClass
 
 // max connections???
 
 // close connection after response or use timeouts
+
+// max config lenght???

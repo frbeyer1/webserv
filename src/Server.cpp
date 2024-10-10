@@ -9,8 +9,6 @@ Server::Server()
     _root = DEFAULT_ROOT;
     _client_max_body_size = DEFAULT_CLIENT_MAX_BODY_SIZE;
     // _error_pages = ;
-    // _locations = ;
-    // _socket_address =
 }
 
 // ============   Deconstructor   ============ //
@@ -50,33 +48,62 @@ size_t  Server::getClientMaxBodySize() const
 }
 
 // ==============   Setters   ================ //
-void    Server::setRoot(std::string parameter)
+void    Server::setRoot(std::string root)
 {
-
-
+    _root = root;
 }
 
-void    Server::setListen(std::string parameter)
+void    Server::setPort(uint16_t port)
 {
-    
+    _port = port;
+}
 
+void    Server::setHost(in_addr_t host)
+{
+    _host = host;
 }
 
 void    Server::setServerName(std::string parameter)
 {
     
-
 }
 
 void    Server::setClientMaxBodySize(std::string parameter)
 {
     
-
 }
 
 void    Server::setErrorPage(std::string parameter)
 {
 
+}
+
+void    Server::setLocation(location_t location)
+{
+
+}
+
+// ================   Utils   ================ //
+/*
+function to set an fd into non-blocking mode
+*/
+void    setNonBlocking(int fd)
+{
+    // Get the current flags for the file descriptor
+    int flags = fcntl(fd, F_GETFL, 0);
+    if (flags == -1)
+    {
+        Logger::log(RED, ERROR, "could not get flags from file descriptor");
+        exit(EXIT_FAILURE);
+    }
+    // Set the flags to include O_NONBLOCK
+    flags |= O_NONBLOCK;
+    // Set the new flags for the file descriptor
+    if (fcntl(fd, F_SETFL, flags) == -1)
+    {
+        Logger::log(RED, ERROR, "could not set flags to file descriptor");
+        exit(EXIT_FAILURE);
+    }
 }
 
 // ==========   Member functions   =========== //
@@ -136,53 +163,6 @@ int    Server::acceptConnection()
         Logger::log(RED, ERROR, "Socket could not accept connection");
         exit(EXIT_FAILURE);        
     }
+    setNonBlocking(new_socket);
     return (new_socket);
 }
-
-/*
-function to set an fd into non-blocking mode
-*/
-// void    set_non_blocking(int fd)
-// {
-//     // Get the current flags for the file descriptor
-//     int flags = fcntl(fd, F_GETFL, 0);
-//     if (flags == -1)
-//     {
-//         std::cerr << "Error getting flags for file descriptor" << std::endl;
-//         exit(EXIT_FAILURE);
-//     }
-//     // Set the flags to include O_NONBLOCK
-//     flags |= O_NONBLOCK;
-//     // Set the new flags for the file descriptor
-//     if (fcntl(fd, F_SETFL, flags) == -1)
-//     {
-//         std::cerr << "Error setting flags for file descriptor" << std::endl;
-//         exit(EXIT_FAILURE);
-//     }
-// }
-
-// uint32_t ipStringToNumeric(const std::string& ip) {
-//     std::stringstream ss(ip);
-//     std::string segment;
-//     uint32_t numericIp = 0;
-//     int segmentCount = 0;
-
-//     while (std::getline(ss, segment, '.')) {
-//         if (segmentCount >= 4) {
-//             throw std::invalid_argument("Invalid IP address format");
-//         }
-//         int segmentValue = std::stoi(segment);
-//         if (segmentValue < 0 || segmentValue > 255) {
-//             throw std::invalid_argument("IP address segments must be between 0 and 255");
-//         }
-//         numericIp = (numericIp << 8) | segmentValue; // Shift left by 8 and add segment
-//         segmentCount++;
-//     }
-
-//     if (segmentCount != 4) {
-//         throw std::invalid_argument("Invalid IP address format: must have 4 segments");
-//     }
-    
-//     return numericIp;
-// }
-

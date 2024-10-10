@@ -42,12 +42,13 @@ public:
     size_t      getClientMaxBodySize() const;
 
 // Setters
-    void        setRoot(std::string parameter);
-    void        setListen(std::string parameter);
+    void        setRoot(std::string root);
+    void        setPort(uint16_t port);
+    void        setHost(in_addr_t host);
     void        setServerName(std::string parameter);
     void        setClientMaxBodySize(std::string parameter);
     void        setErrorPage(std::string parameter);
-    //          setLocation();
+    void        setLocation(location_t location);
 
 // Member functions
     void        setup();

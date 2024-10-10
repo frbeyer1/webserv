@@ -22,7 +22,19 @@ enum Directive
 class ConfigParser
 {
 private:
-    std::vector<Server> &_servers;
+    std::vector<Server>&    _servers;
+    std::string             _content;
+    int                     _i;
+
+// private member functions
+    void        _readConfig(std::string config);
+    void        _findServerBlock();
+    void        _skipWhiteSpaces();
+    void        _skipComment();
+    void        _getDirective(Server &server);
+    Directive   _getDirectiveType();
+    std::string _getParameter();
+    void        _getLocation(Server &server);
 
 public:
 // Constructor

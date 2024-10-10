@@ -24,6 +24,11 @@
 #include "Client.hpp"
 #include "Logger.hpp"
 
+/*   Logger Settings   */
+#define LOGGER_STATE                                ON
+#define LOGGER_OUTPUT_MODE                          STDOUT
+#define LOGGER_LOG_LVL                              ERROR
+
 /*   HTTP Error Codes   */
 #define BAD_REQUEST                                 400
 #define FORBIDDEN                                   403
@@ -36,6 +41,7 @@
 /*   Default Config Settings   */
 #define DEFAULT_CONFIG                              "conf/default.conf"
 #define DEFAULT_PORT                                80
+#define DEFAULT_HOST                                "127.0.0.1"
 #define DEFAULT_NAME                                "default"
 #define DEFAULT_ROOT                                "docs/"
 #define DEFAULT_CLIENT_MAX_BODY_SIZE                1048576
