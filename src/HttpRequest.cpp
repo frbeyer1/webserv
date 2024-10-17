@@ -1,7 +1,7 @@
 #include "../inc/HttpRequest.hpp"
 
 // =============   Constructor   ============= //
-HttpRequest::HttpRequest(int client_max_body_size)
+HttpRequest::HttpRequest(size_t client_max_body_size)
 {
     _state = Empty_Line;
     _error = 0;

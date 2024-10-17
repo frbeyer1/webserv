@@ -47,7 +47,7 @@ public:
     void        setHost(in_addr_t host);
     void        setServerName(std::string server_name);
     void        setClientMaxBodySize(size_t client_max_body_size);
-    void        setErrorPage(std::string parameter);
+    void        setErrorPage(int status_code, std::string page_path);
     void        setLocation(location_t location);
 
 // Member functions

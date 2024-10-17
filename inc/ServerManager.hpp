@@ -2,6 +2,10 @@
 
 #include "Webserv.hpp"
 
+class Server;
+
+class Client;
+
 class ServerManager
 {
 private:

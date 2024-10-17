@@ -24,7 +24,7 @@ class ConfigParser
 private:
     std::vector<Server>&    _servers;
     std::string             _content;
-    int                     _i;
+    size_t                  _i;
 
 // private member functions
     void        _readConfig(std::string config);

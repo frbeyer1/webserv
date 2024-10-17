@@ -5,6 +5,14 @@
 #define CR                                          '\r'
 #define LF                                          '\n'
 
+enum HttpMethod
+{
+    NONE,
+    GET,
+    POST,
+    DELETE,
+};
+
 enum ParsingState
 {
     Empty_Line,
@@ -41,14 +49,6 @@ enum ParsingState
     Parsing_Finished,
 };
 
-enum HttpMethod
-{
-    NONE,
-    GET,
-    POST,
-    DELETE,
-};
-
 class HttpRequest
 {
 private:
@@ -73,11 +73,11 @@ private:
     size_t                                          _chunk_len;
     bool                                            _body_flag;
     bool                                            _chunked_transfer_flag;
-    int                                             _client_max_body_size;
+    size_t                                          _client_max_body_size;
 
 public:
 // Constructor
-    HttpRequest(int client_max_body_size);
+    HttpRequest(size_t client_max_body_size);
 
 // Deconstructor
     ~HttpRequest();

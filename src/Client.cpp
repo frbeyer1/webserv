@@ -25,10 +25,10 @@ time_t  Client::getLastMsgTime() const
 // ================   Setter   =============== //
 void    Client::setClientFd(int fd)
 {
-
+    _client_fd = fd;
 }
 
 void    Client::setLastMsgTime(time_t time)
 {
-
+    _last_msg_time = time;
 }

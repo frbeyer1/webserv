@@ -1,5 +1,10 @@
 #include "../inc/Logger.hpp"
 
+
+State Logger::_state = ON;
+LogLvl Logger::_loglvl = ERROR;
+OutputMode Logger::_mode = STDOUT;
+
 // ================   Setter   =============== //
 void    Logger::setState(State state)
 {
@@ -45,6 +50,8 @@ static std::string getLogLvlStr(LogLvl loglvl)
             return (str = "  [INFO]  ");
         case DEBUG:
             return (str = "  [DEBUG]  ");
+        default:
+            return (str);
     }
 }
 
@@ -58,7 +65,7 @@ void    Logger::log(const char *color, LogLvl loglvl, const char *msg)
         return ;
     if (loglvl > _loglvl)
         return ;
-    if (_mode == FILE)
+    if (_mode == OUT_FILE)
     {
         std::ofstream   outFile(LOGFILE_NAME);
 

@@ -1,11 +1,17 @@
-#include "Server.hpp"
+#include "../inc/Server.hpp"
 
 // =============   Constructor   ============= //
 Server::Server()
 {
-    if (_host = ipStringToNumeric(DEFAULT_HOST))
+    try
     {
-        Logger::log(RED, ERROR, "Webserv header misconfigured: DEFAULT_HOST: ip invalid");
+        _host = ipStringToNumeric(DEFAULT_HOST);
+    }
+    catch(const std::exception& e)
+    {
+        std::string msg("Webserv header misconfigured: DEFAULT_HOST: ip invalid: ");
+        msg += e.what();
+        Logger::log(RED, ERROR, msg.c_str());
         exit(EXIT_FAILURE);
     }
     _port = DEFAULT_PORT;
@@ -77,14 +83,14 @@ void    Server::setClientMaxBodySize(size_t client_max_body_size)
     _client_max_body_size = client_max_body_size;
 }
 
-void    Server::setErrorPage(std::string parameter)
+void    Server::setErrorPage(int status_code, std::string page_path)
 {
-
+    _error_pages.insert(std::pair<int, std::string>(status_code, page_path));
 }
 
 void    Server::setLocation(location_t location)
 {
-
+    _locations.push_back(location);
 }
 
 // ================   Utils   ================ //

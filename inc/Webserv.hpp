@@ -3,13 +3,16 @@
 #include <unistd.h>
 #include <string.h>
 #include <fcntl.h>
+#include <stdlib.h>
 
 #include <sys/socket.h>
-#include <sys/epoll.h> 
+#include <sys/epoll.h>
+#include <sys/stat.h>
 #include <netinet/in.h>
 
+#include <arpa/inet.h>
+
 #include <iostream>
-#include <cstdint>
 #include <sstream>
 #include <fstream>
 #include <ctime>
@@ -17,8 +20,8 @@
 #include <map>
 #include <vector>
 
-#include "ServerManager.hpp"
 #include "HttpRequest.hpp"
+#include "ServerManager.hpp"
 #include "Server.hpp"
 #include "ConfigParser.hpp"
 #include "Client.hpp"
@@ -44,7 +47,7 @@
 #define DEFAULT_HOST                                "127.0.0.1"
 #define DEFAULT_NAME                                "default"
 #define DEFAULT_ROOT                                "docs/"
-#define DEFAULT_CLIENT_MAX_BODY_SIZE                1048576
+#define DEFAULT_CLIENT_MAX_BODY_SIZE                10240
 
 /*   Technical Settings   */
 #define MAX_EPOLL_EVENTS                            10

@@ -12,7 +12,7 @@ enum LogLvl
 enum OutputMode
 {
     STDOUT,
-    FILE,
+    OUT_FILE,
 };
 
 enum State

@@ -19,8 +19,8 @@ int main(int argc, char **argv)
     ServerManager   master;
 
     master.configure(config);
-    master.setup();
-    master.boot();
+    //master.setup();
+    //master.boot();
     return (EXIT_SUCCESS);
 }
 
@@ -32,14 +32,17 @@ int main(int argc, char **argv)
 
 // if exit (need to close all fds?)
 
-// make fds non blocking
 // server sockets also non blocking???
 
 // max connections???
 
-// close connection after response or use timeouts
+// close connection after response (handles only full requests in one sending) (chunked transefer would make no sense) or use timeouts
 
 // max config lenght???
+
+// how to config max body size ??? in MB or in bytes
+
+// init server_map
 
 // add logger info and debug msgs
 

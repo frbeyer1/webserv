@@ -122,7 +122,7 @@ void    ServerManager::boot()
 {
     // creates epoll instance
     int _epoll_fd = epoll_create(1);
-    if (_epoll_fd = -1)
+    if (_epoll_fd == -1)
     {
         Logger::log(RED, ERROR, "creating epoll instace failed");
         exit(EXIT_FAILURE);
