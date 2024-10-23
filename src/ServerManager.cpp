@@ -54,6 +54,7 @@ void    ServerManager::configure(std::string config)
     ConfigParser    parser(_servers);
 
     parser.parse(config);
+    Logger::log(WHITE, DEBUG, "Finished config file parsing");
 }
 
 /*
@@ -61,6 +62,7 @@ setting up all servers
 */
 void    ServerManager::setup()
 {
+    Logger::log(WHITE, INFO, "Setting up servers...");
     if (checkDuplicates(_servers))
     {
         Logger::log(RED, ERROR, "Could not setup servers, because of duplicates in config file");
@@ -70,7 +72,12 @@ void    ServerManager::setup()
     {
         it->setup();
         _server_map.insert(std::pair<int, Server>(it->getServerFd(), *it));
+        std::string msg;
+        msg = "Server setup: ServerName[" + it->getSeverName() + "] Host[" + it->getIp() + "] Port[";
+        msg += it->getPort() + "]";
+        Logger::log(WHITE, INFO, msg.c_str());
     }
+    Logger::log(WHITE, DEBUG, "Setting up servers finished");
 }
 
 /*
@@ -80,6 +87,11 @@ void    ServerManager::acceptNewConnection(int server_fd)
 {
     int new_socket;
 
+    if (_server_map.size() > MAX_CONNECTIONS)
+    {
+        Logger::log(YELLOW, INFO, "Did not accept connection, because there are more than MAX_CONNECTIONS");
+        return ;
+    }
     new_socket = _server_map[server_fd].acceptConnection();
 
     Client client;
@@ -101,6 +113,9 @@ void    ServerManager::closeConnection(int fd)
     }
     close(fd);
     _client_map.erase(fd);
+    std::string msg;
+    msg = "closed connection " + fd;
+    Logger::log(WHITE, DEBUG, "closed Connection");
 }
 
 /*
@@ -110,8 +125,14 @@ void    ServerManager::checkTimeout()
 {
     for (std::map<int, Client>::iterator it = _client_map.begin(); it != _client_map.end(); it++)
     {
-        if (time(NULL) - it->second.getClientFd() > CLIENT_CONNECTION_TIMEOUT)
+        if (time(NULL) - it->second.getLastMsgTime() > CLIENT_CONNECTION_TIMEOUT)
+        {
+            std::string msg;
+            msg = "Client timeout: Client_FD[" + it->second.getClientFd();
+            msg += "], closing connection ...";
+            Logger::log(WHITE, INFO, msg.c_str());
             closeConnection(it->first);
+        }
     }
 }
 
@@ -120,6 +141,7 @@ starts listening on the servers and setting up of the epoll instance for I/O mul
 */
 void    ServerManager::boot()
 {
+    Logger::log(WHITE, INFO, "Booting Servers ...");
     // creates epoll instance
     int _epoll_fd = epoll_create(1);
     if (_epoll_fd == -1)

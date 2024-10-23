@@ -18,7 +18,8 @@ class Server
 private:
     in_addr_t                   _host;
     uint16_t                    _port;
-    std::string                 _server_name; 
+    std::string                 _server_name;
+    std::string                 _ip;
     std::string                 _root;
     size_t                      _client_max_body_size;
     std::map<int, std::string>  _error_pages;
@@ -35,6 +36,7 @@ public:
 
 // Getters
     in_addr_t   getHost() const;
+    std::string getIp() const;
     uint16_t    getPort() const;
     int         getServerFd() const;
     std::string getSeverName() const;
@@ -45,6 +47,7 @@ public:
     void        setRoot(std::string root);
     void        setPort(uint16_t port);
     void        setHost(in_addr_t host);
+    void        setIp(std::string ip);
     void        setServerName(std::string server_name);
     void        setClientMaxBodySize(size_t client_max_body_size);
     void        setErrorPage(int status_code, std::string page_path);

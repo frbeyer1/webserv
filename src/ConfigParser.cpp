@@ -111,6 +111,7 @@ static void handleListen(std::string parameter, Server &server)
         exit(EXIT_FAILURE);
     }
     server.setHost(host);
+    server.setIp(ip_str);
     for (size_t i = 0; i < port_str.length(); i++)
     {
         if (!isdigit(port_str[i]))
@@ -385,13 +386,20 @@ std::string ConfigParser::_getParameter()
     return (parameter);
 }
 
+/*
+parses the location directive
+*/
 // void    ConfigParser::_getLocation(Server &server)
 // {
 //     Directive   type;
 //     location_t  location;
     
-
+//     memset(&location, 0, sizeof(location));
 //     // save path
+//     for (int i = 0; i < _content.length(); _i++)
+//     {
+
+//     }
 //     for (int i = 0; i < _content.length(); _i++)
 //     {
 //         std::string parameter;
@@ -459,8 +467,8 @@ void    ConfigParser::_getDirective(Server &server)
     case ERROR_PAGE:
         handleErrorPage(parameter, server);
         break;
-    // case LOCATION:
-        // _getLocation(server);
+    case LOCATION:
+        _getLocation(server);
         break;
     default:
         Logger::log(RED, ERROR, "Config file misconfigured: invalid directive");

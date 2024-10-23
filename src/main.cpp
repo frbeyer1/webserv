@@ -34,16 +34,16 @@ int main(int argc, char **argv)
 
 // server sockets also non blocking???
 
-// max connections???
-
-// close connection after response (handles only full requests in one sending) (chunked transefer would make no sense) or use timeouts
-
 // max config lenght???
-
-// how to config max body size ??? in MB or in bytes
 
 // init server_map
 
-// add logger info and debug msgs
-
 // init default error pages
+
+// request -> check for one and valid host header(if not -> 400 bad request)
+
+// logger info msgs for accepting closing connections
+
+// error page directive parsing: check for existing error pages -> replace them
+
+// check for read rights for error page

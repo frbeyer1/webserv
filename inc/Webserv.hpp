@@ -51,6 +51,7 @@
 
 /*   Technical Settings   */
 #define MAX_EPOLL_EVENTS                            10
+#define MAX_CONNECTIONS                             10
 #define BACKLOG                                     128
 #define MAX_URI_LENGHT                              4096
 #define MAX_HEADER_LENGHT                           8192

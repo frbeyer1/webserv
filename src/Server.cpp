@@ -3,6 +3,7 @@
 // =============   Constructor   ============= //
 Server::Server()
 {
+    _ip = DEFAULT_HOST;
     try
     {
         _host = ipStringToNumeric(DEFAULT_HOST);
@@ -30,6 +31,11 @@ Server::~Server()
 in_addr_t   Server::getHost() const
 {
     return (_host);
+}
+
+std::string Server::getIp() const
+{
+    return (_ip);
 }
 
 uint16_t    Server::getPort() const
@@ -71,6 +77,11 @@ void    Server::setPort(uint16_t port)
 void    Server::setHost(in_addr_t host)
 {
     _host = host;
+}
+
+void    Server::setIp(std::string ip)
+{
+    _ip = ip;
 }
 
 void    Server::setServerName(std::string server_name)
