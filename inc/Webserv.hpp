@@ -57,6 +57,7 @@
 #define MAX_HEADER_LENGHT                           8192
 #define CLIENT_CONNECTION_TIMEOUT                   60
 #define LOGFILE_NAME                                "webserv.log"
+#define READ_SIZE                                   8000
 
 /*   ANSI escape codes for colors   */
 #define RESET                                       "\033[0m"

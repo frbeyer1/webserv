@@ -1,33 +1,21 @@
 #include "../inc/HttpRequest.hpp"
 
 // =============   Constructor   ============= //
-HttpRequest::HttpRequest(size_t client_max_body_size)
+HttpRequest::HttpRequest()
 {
-    _state = Empty_Line;
-    _error = 0;
-    _method = NONE;
-    _path = "";
-    _query = "";
-    _fragment = "";
-    _version_major = 0;
-    _version_minor = 0;
-    _body = "";
-    _method_str = "";
-    _header_field_name = "";
-    _header_field_value = "";
-    _chunk_lenght_str = "";
-    _uri_len = 0;
-    _header_len = 0;
-    _body_len = 0;
-    _chunk_len = 0;
-    _body_flag = false;
-    _chunked_transfer_flag = false;
-    _client_max_body_size = client_max_body_size;
+    clear();
+    _client_max_body_size = 0;
 }
 
 // ============   Deconstructor   ============ //
 HttpRequest::~HttpRequest()
 {
+}
+
+// ==============   Setters   ================ //
+void    HttpRequest::setClientMaxBodySize(size_t client_max_body_size)
+{
+    _client_max_body_size = client_max_body_size;
 }
 
 // ==============   Getters   ================ //
@@ -175,6 +163,33 @@ static void    trimFieldValueStr(std::string &string)
 }
 
 // ==========   Member functions   =========== //
+
+/*
+clears and resets all variables in the object
+*/
+void    HttpRequest::clear()
+{
+    _state = Empty_Line;
+    _error = 0;
+    _method = NONE;
+    _path = "";
+    _query = "";
+    _fragment = "";
+    _version_major = 0;
+    _version_minor = 0;
+    _body = "";
+    _method_str = "";
+    _header_field_name = "";
+    _header_field_value = "";
+    _chunk_lenght_str = "";
+    _uri_len = 0;
+    _header_len = 0;
+    _body_len = 0;
+    _chunk_len = 0;
+    _body_flag = false;
+    _chunked_transfer_flag = false;
+}
+
 /*
 partial parses the http Request octet by octet
 */

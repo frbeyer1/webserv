@@ -36,6 +36,6 @@ public:
     static void setLogLvl(LogLvl loglvl);
 
 // Static member functions
-    static void log(const char *color, LogLvl loglvl, const char *msg);
+    static void log(const char *color, LogLvl loglvl, std::ostringstream msg);
 
 };

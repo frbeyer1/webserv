@@ -13,7 +13,7 @@ int main(int argc, char **argv)
         config = argv[1];
     else
     {
-        Logger::log(RED, ERROR, "Invalid Arguments: try './webserv [configuration file]'");
+        Logger::log(RED, ERROR, std::ostringstream() << "Invalid Arguments: try './webserv [configuration file]'");
         return (EXIT_FAILURE);
     }
     ServerManager   master;
@@ -47,3 +47,5 @@ int main(int argc, char **argv)
 // error page directive parsing: check for existing error pages -> replace them
 
 // check for read rights for error page
+
+// use read or recv and write or send ???

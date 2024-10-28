@@ -1,6 +1,5 @@
 #include "../inc/Logger.hpp"
 
-
 State Logger::_state = ON;
 LogLvl Logger::_loglvl = ERROR;
 OutputMode Logger::_mode = STDOUT;
@@ -59,7 +58,7 @@ static std::string getLogLvlStr(LogLvl loglvl)
 /*
 logs an message depending on the log settings
 */
-void    Logger::log(const char *color, LogLvl loglvl, const char *msg)
+void    Logger::log(const char *color, LogLvl loglvl, std::ostringstream msg)
 {
     if (_state == OFF)
         return ;
@@ -71,12 +70,12 @@ void    Logger::log(const char *color, LogLvl loglvl, const char *msg)
 
         if (outFile.is_open())
         {
-            outFile << getTimestamp() << getLogLvlStr(loglvl) << msg << std::endl;
+            outFile << getTimestamp() << getLogLvlStr(loglvl) << msg.str() << std::endl;
             outFile.close();
         }
         else
             std::cerr << RED << getTimestamp() << getLogLvlStr(ERROR) << "Could not open file: " << LOGFILE_NAME << RESET << std::endl;
     }
     else if (_mode == STDOUT)
-        std::cout << color << getTimestamp() << getLogLvlStr(loglvl) << msg << RESET << std::endl;
+        std::cout << color << getTimestamp() << getLogLvlStr(loglvl) << msg.str() << RESET << std::endl;
 }

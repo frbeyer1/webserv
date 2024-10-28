@@ -35,27 +35,29 @@ public:
     ~Server();
 
 // Getters
-    in_addr_t   getHost() const;
-    std::string getIp() const;
-    uint16_t    getPort() const;
-    int         getServerFd() const;
-    std::string getSeverName() const;
-    std::string getRoot() const;
-    size_t      getClientMaxBodySize() const;
+    in_addr_t           getHost() const;
+    std::string         getIp() const;
+    uint16_t            getPort() const;
+    int                 getServerFd() const;
+    std::string         getSeverName() const;
+    std::string         getRoot() const;
+    size_t              getClientMaxBodySize() const;
+    struct sockaddr_in  getSocketAddress() const;
+    
 
 // Setters
-    void        setRoot(std::string root);
-    void        setPort(uint16_t port);
-    void        setHost(in_addr_t host);
-    void        setIp(std::string ip);
-    void        setServerName(std::string server_name);
-    void        setClientMaxBodySize(size_t client_max_body_size);
-    void        setErrorPage(int status_code, std::string page_path);
-    void        setLocation(location_t location);
+    void                setRoot(std::string root);
+    void                setPort(uint16_t port);
+    void                setHost(in_addr_t host);
+    void                setIp(std::string ip);
+    void                setServerName(std::string server_name);
+    void                setClientMaxBodySize(size_t client_max_body_size);
+    void                setErrorPage(int status_code, std::string page_path);
+    void                setLocation(location_t location);
 
 // Member functions
-    void        setup();
-    void        startListening();
-    int         acceptConnection(); 
+    void                setup();
+    void                startListening();
+    int                 acceptConnection(); 
 
 };

@@ -77,10 +77,13 @@ private:
 
 public:
 // Constructor
-    HttpRequest(size_t client_max_body_size);
+    HttpRequest();
 
 // Deconstructor
     ~HttpRequest();
+
+// Setters
+    void                                        setClientMaxBodySize(size_t client_max_body_size);
 
 // Getters
     int                                         getError() const;
@@ -96,6 +99,7 @@ public:
 
 // Member functions
     void                                        parse(uint8_t *data, size_t size);
+    void                                        clear();
 
 };
 

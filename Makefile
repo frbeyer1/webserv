@@ -1,18 +1,19 @@
-NAME		= webserv
+NAME	= webserv
 
-SRC			=	src/main.cpp			\
-				src/Server.cpp			\
-				src/ServerManager.cpp	\
-				src/Logger.cpp			\
-				src/HttpRequest.cpp		\
-				src/ConfigParser.cpp	\
-				src/Client.cpp			\
+SRC		=	src/main.cpp			\
+			src/Server.cpp			\
+			src/ServerManager.cpp	\
+			src/Logger.cpp			\
+			src/HttpRequest.cpp		\
+			src/ConfigParser.cpp	\
+			src/Client.cpp			\
+			src/Response.cpp		\
 
-OBJ			= $(SRC:.cpp=.o)
+OBJ		= $(SRC:.cpp=.o)
 
-CC      	= c++
+CC		= c++
 
-FLAGS	= -Wall -Werror -Wextra #-std=c++98
+FLAGS	= -Wall -Werror -Wextra -std=c++98
 
 all: $(NAME)
 
@@ -28,7 +29,6 @@ clean:
 fclean: clean
 	rm -f $(NAME)
 
-
-re:    	fclean all
+re:	fclean all
 
 .PHONY: all clean fclean format re
