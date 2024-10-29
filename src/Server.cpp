@@ -61,6 +61,11 @@ size_t  Server::getClientMaxBodySize() const
     return (_client_max_body_size);
 }
 
+std::map<int, std::string>& Server::getErrorPages()
+{
+    return (_error_pages);
+}
+
 struct sockaddr_in  Server::getSocketAddress() const
 {
     return (_socket_address);
@@ -102,9 +107,9 @@ void    Server::setErrorPage(int status_code, std::string page_path)
     _error_pages.insert(std::pair<int, std::string>(status_code, page_path));
 }
 
-void    Server::setLocation(location_t location)
+void    Server::setLocation(std::string path, location_t location)
 {
-    _locations.push_back(location);
+    _locations.insert(std::make_pair(path, location));
 }
 
 // ================   Utils   ================ //
@@ -154,7 +159,7 @@ void    Server::setup()
     _socket_address.sin_family = AF_INET;
     _socket_address.sin_port = htons(_port);
     _socket_address.sin_addr.s_addr = htonl(_host);
-    memset(_socket_address.sin_zero, '\0', sizeof(_socket_address.sin_zero));
+    std::memset(_socket_address.sin_zero, '\0', sizeof(_socket_address.sin_zero));
     if (bind(_server_fd, (struct sockaddr *)&_socket_address, sizeof(_socket_address)) < 0)
     {
         Logger::log(RED, ERROR, std::ostringstream() << "Could not bind socket");

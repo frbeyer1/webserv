@@ -14,7 +14,8 @@ enum Directive
     ALIAS,
     AUTOINDEX,
     INDEX,
-    // ...
+    UPLOAD,
+    CGI,
     LOCATION,
     UNKNOWN,
 };
@@ -22,23 +23,25 @@ enum Directive
 class ConfigParser
 {
 private:
-    std::vector<Server>&    _servers;
+    std::vector<Server>     &_server_vector;
     std::string             _content;
     size_t                  _i;
 
-// private member functions
+// Private Member functions
     void        _readConfig(std::string config);
-    void        _findServerBlock();
-    void        _skipWhiteSpaces();
     void        _skipComment();
-    void        _getDirective(Server &server);
-    Directive   _getDirectiveType();
+    void        _skipWhiteSpaces();
+    void        _findNextServerBlock();
     std::string _getParameter();
+    Directive   _getDirectiveType();
+    std::string _getLocationPath();
     void        _getLocation(Server &server);
+    void        _getDirective(Server &server);
+
 
 public:
 // Constructor
-    ConfigParser(std::vector<Server> &servers);
+    ConfigParser(std::vector<Server> &server_vector);
 
 // Deconstructor
     ~ConfigParser();

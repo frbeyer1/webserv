@@ -4,9 +4,6 @@ int main(int argc, char **argv)
 {
     std::string config;
 
-    Logger::setState(LOGGER_STATE);
-    Logger::setOutputMode(LOGGER_OUTPUT_MODE);
-    Logger::setLogLvl(LOGGER_LOG_LVL);
     if (argc == 1)
         config = DEFAULT_CONFIG;
     else if (argc == 2)
@@ -19,33 +16,29 @@ int main(int argc, char **argv)
     ServerManager   master;
 
     master.configure(config);
-    //master.setup();
-    //master.boot();
+    // master.setup();
+    // master.boot();
     return (EXIT_SUCCESS);
 }
 
 // ==============   TO DO   ================== //
 
 // HttpRequestParser:
-//  -    parse the chunk extensions and trailer section or keep ignoring ???
-//  -    do Percent decoding ???
+// -    parse the chunk extensions and trailer section or keep ignoring ???
+// -    do Percent decoding ???
+// -    check for one and a valid host header(if not -> 400 bad request) read rfc for more detail
 
-// if exit (need to close all fds?)
+// fds:
+// -    if exit (need to close all fds?)
+// -    server sockets also non blocking???
 
-// server sockets also non blocking???
+// config parser:
+// -    what if location directive is empty
+// -    should directives with paths have the full path?? or dependent on root (so it needs root first???)
+//      -> takes root if there , and takes full path when no root
+// -    max config lenght???
 
-// max config lenght???
-
-// init server_map
-
-// init default error pages
-
-// request -> check for one and valid host header(if not -> 400 bad request)
-
-// logger info msgs for accepting closing connections
-
-// error page directive parsing: check for existing error pages -> replace them
-
-// check for read rights for error page
+// other stuff:
+// -    init default error pages
 
 // use read or recv and write or send ???

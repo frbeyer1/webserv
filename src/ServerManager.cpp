@@ -124,7 +124,7 @@ void    ServerManager::_readRequest(int fd)
         Client &client = _client_map[fd];
         client.request.parse(buffer, bytes_read);
         client.setLastMsgTime(time(NULL));
-        memset(buffer, 0, sizeof(buffer));
+        std::memset(buffer, 0, sizeof(buffer));
     }
 
     // check for parsing finished -> build response

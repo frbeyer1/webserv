@@ -1,7 +1,7 @@
-#include "../inc/ServerManager.hpp"
+#include "../inc/ConfigParser.hpp"
 
 // =============   Constructor   ============= //
-ConfigParser::ConfigParser(std::vector<Server> &servers) : _servers(servers)
+ConfigParser::ConfigParser(std::vector<Server> &server_vector) : _server_vector(server_vector)
 {
     _content = "";
     _i = 0;
@@ -15,9 +15,7 @@ ConfigParser::~ConfigParser()
 // ================   Utils   ================ //
 /*
 converts an string ip into an numeric ip address
-
 !!! throws exception at fail !!!
-
 */
 uint32_t ipStringToNumeric(const std::string& ip)
 {
@@ -40,6 +38,7 @@ uint32_t ipStringToNumeric(const std::string& ip)
         throw std::invalid_argument("IP address has too less octets.");
     return (numericIp);
 }
+
 
 /*
 parses an parameter string of the config and sets root on the corresponding server
@@ -216,50 +215,86 @@ static void handleErrorPage(std::string parameter, Server &server)
         Logger::log(RED, ERROR, std::ostringstream() << "Config file misconfigured: error_page directive: error page path invalid");
         exit(EXIT_FAILURE);
     }
+    if (access(page_path.c_str(), R_OK))
+    {
+        Logger::log(RED, ERROR, std::ostringstream() << "Config file misconfigured: error_page directive: error page has no read rights");
+        exit(EXIT_FAILURE);
+    }
+    if (server.getErrorPages().count(status_code))
+        server.getErrorPages().erase(status_code);
     server.setErrorPage(status_code, page_path);
 }
 
-// static void handleAllowedMethods(std::string parameter, location_t &location)
-// {
-
-// }
-
-// static void handleRedirection(std::string parameter, location_t &location)
-// {
-
-// }
-
-// static void handleAlias(std::string parameter, location_t &location)
-// {
-
-// }
-
-static void handleAutoIndex(std::string parameter, location_t &location)
+/*
+parses an parameter string and look for vaild Http Methods and adds it to location
+*/
+void handleAllowedMethods(std::string parameter, location_t &location)
 {
-    if (parameter == "on")
-        location.autoindex = true;
-    else if (parameter == "off")
-        location.autoindex = false;
-    else
+    std::string  method;
+    int         start = 0;
+
+    for (size_t i = 0; i <= parameter.length(); i++)
     {
-        Logger::log(RED, ERROR, std::ostringstream() << "Config file misconfigured: autoindex directive: invalid parameter");
-        exit(EXIT_FAILURE);
+        if (iswspace(parameter[i]) || i == parameter.length())
+        {
+            method = parameter.substr(start, i - start);
+            if (method == "GET")
+                location.allowed_methods.allow_get = true;
+            else if (method == "POST")
+                location.allowed_methods.allow_post = true;
+            else if (method == "DELETE")
+                location.allowed_methods.allow_delete = true;
+            else
+            {
+                Logger::log(RED, ERROR, std::ostringstream() << "Config file misconfigured: allowed_method directive: invalid method");
+                exit(EXIT_FAILURE);
+            }
+            while (parameter.length() && iswspace(parameter[i]))
+                i++;
+            start = i;
+        }
     }
 }
 
-// static void handleIndex(std::string parameter, location_t &location)
-// {
+static void handleRedirection(std::string parameter, location_t &location)
+{
 
-// }
+}
+
+static void handleAlias(std::string parameter, location_t &location)
+{
+
+}
+
+static void handleAutoIndex(std::string parameter, location_t &location)
+{
+
+}
+
+static void handleIndex(std::string parameter, location_t &location)
+{
+
+}
+
+static void handleUpload(std::string parameter, location_t &location)
+{
+
+}
+
+static void handleCgi(std::string parameter, location_t &location)
+{
+
+}
 
 // ======   Private member functions   ======= //
 /*
-reads and saves the config file
+Tries to open the config file, reads it and saves its content inside the _content string.
+- the config string must be an path to the file
 */
 void    ConfigParser::_readConfig(std::string config)
 {
-    std::ifstream       file(config.c_str());
-    std::stringstream   buffer;
+    std::ifstream           file(config.c_str());
+    std::stringstream       buffer;
 
     if (file.fail())
     {
@@ -269,10 +304,11 @@ void    ConfigParser::_readConfig(std::string config)
     buffer << file.rdbuf();
     file.close();
     _content = buffer.str();
+    Logger::log(GREY, DEBUG, std::ostringstream() << "Finished with reading file: " << config);
 }
 
 /*
-skipping comments in the config file string
+skips comments in the _content string
 */
 void    ConfigParser::_skipComment()
 {
@@ -287,7 +323,7 @@ void    ConfigParser::_skipComment()
 }
 
 /*
-skipping whitespaces in the config file string
+skips whitespaces (and comments) in the _content string
 */
 void    ConfigParser::_skipWhiteSpaces()
 {
@@ -300,14 +336,14 @@ void    ConfigParser::_skipWhiteSpaces()
 }
 
 /*
-finds next server block in the config file string
+goes through the _content string and serarches for the next server Block
 */
-void    ConfigParser::_findServerBlock()
+void    ConfigParser::_findNextServerBlock()
 {
     for (; _i < _content.length(); _i++)
     {
         _skipWhiteSpaces();
-        if (_content.compare(_i, 6, "server") == 0 || _content.compare(_i, 6, "Server") == 0)
+        if (_content.compare(_i, 6, "server") == 0 | _content.compare(_i, 6, "Server") == 0)
         {
             _i += 6;
             _skipWhiteSpaces();
@@ -315,6 +351,11 @@ void    ConfigParser::_findServerBlock()
             {
                 _i++;
                 return;
+            }
+            else
+            {
+                Logger::log(RED, ERROR, std::ostringstream() << "Config file misconfigured: missing '{'");
+                exit(EXIT_FAILURE);
             }
         }
         else
@@ -326,48 +367,16 @@ void    ConfigParser::_findServerBlock()
 }
 
 /*
-returns Directive type
-*/
-Directive ConfigParser::_getDirectiveType()
-{
-    std::map<std::string, Directive> keywordMap;
-    keywordMap["root"] = ROOT;
-    keywordMap["listen"] = LISTEN;
-    keywordMap["server_name"] = SERVER_NAME;
-    keywordMap["client_max_body_size"] = CLIENT_MAX_BODY_SIZE;
-    keywordMap["error_page"] = ERROR_PAGE;
-    keywordMap["allowed_methods"] = ALLOWED_METHODS;
-    keywordMap["redirection"] = REDIRECTION;
-    keywordMap["alias"] = ALIAS;
-    keywordMap["autoindex"] = AUTOINDEX;
-    keywordMap["index"] = INDEX;
-    keywordMap["location"] = LOCATION;
-    // ...
-    for (std::map<std::string, Directive>::const_iterator it = keywordMap.begin(); it != keywordMap.end(); it++)
-    {
-        const std::string&  keyword = it->first;
-        Directive           responseCode = it->second;
-
-        if (_content.compare(_i, keyword.length(), keyword) == 0)
-        {
-            _i += keyword.length();
-            if (_content[_i] == ' ')
-                return (responseCode);
-            else
-                break ;
-        }
-    }
-    return (UNKNOWN);
-}
-
-/*
-returns the parameter of an directive as a string
+goes forward in the the _content string and returns the parameter of an directive as a string
+- returns as much chars until ';' is found 
 */
 std::string ConfigParser::_getParameter()
 {
     std::string parameter;
-    int         start;
+    size_t      start;
+    bool        found;
 
+    found = false;
     start = _i;
     for (; _i < _content.length(); _i++)
     {
@@ -379,84 +388,147 @@ std::string ConfigParser::_getParameter()
                 exit(EXIT_FAILURE);
             }
             _i++;
+            found = true;
             break;
         }
-        if (_i == _content.length() || _content[_i] == '\n')
-        {
-            Logger::log(RED, ERROR, std::ostringstream() << "Config file misconfigured: missing ';'");
-            exit(EXIT_FAILURE);
-        }
+    }
+    if (!found)
+    {
+        Logger::log(RED, ERROR, std::ostringstream() << "Config file misconfigured: missing ';'");
+        exit(EXIT_FAILURE);
     }
     parameter = _content.substr(start, _i - start - 1);
     return (parameter);
 }
 
 /*
-parses the location directive
+goes forward in the _content string and returns the directive type
 */
-// void    ConfigParser::_getLocation(Server &server)
-// {
-//     Directive   type;
-//     location_t  location;
-    
-//     memset(&location, 0, sizeof(location));
-//     // save path
-//     for (int i = 0; i < _content.length(); _i++)
-//     {
+Directive ConfigParser::_getDirectiveType()
+{
+    std::map<std::string, Directive> map;
 
-//     }
-//     for (int i = 0; i < _content.length(); _i++)
-//     {
-//         std::string parameter;
-//         if (_content[_i] == '}')
-//         {
-//             _i++;
-//             break ;
-//         }
-//         _skipWhiteSpaces();
-//         type = _getDirectiveType();
-//         _skipWhiteSpaces();
-//         parameter = _getParameter();
-//         switch (type) {
+    map["root"] = ROOT;
+    map["listen"] = LISTEN;
+    map["server_name"] = SERVER_NAME;
+    map["client_max_body_size"] = CLIENT_MAX_BODY_SIZE;
+    map["error_page"] = ERROR_PAGE;
+    map["allowed_methods"] = ALLOWED_METHODS;
+    map["return"] = REDIRECTION;
+    map["alias"] = ALIAS;
+    map["autoindex"] = AUTOINDEX;
+    map["index"] = INDEX;
+    map["location"] = LOCATION;
+    map["upload"] = UPLOAD;
+    map["cgi"] = CGI;
+    for (std::map<std::string, Directive>::const_iterator it = map.begin(); it != map.end(); it++)
+    {
+        const std::string&  keyword = it->first;
+        Directive           type = it->second;
 
-//         case ALLOWED_METHODS:
-//             handleAllowedMethods(parameter, location);
-//             break;
-//         case REDIRECTION:
-//             handleRedirection(parameter, location);
-//             break;
-//         case ALIAS:
-//             handleAlias(parameter, location);
-//             break;
-//         case AUTOINDEX:
-//             handleAutoIndex(parameter, location);
-//             break;
-//         case INDEX:
-//             handleIndex(parameter, location);
-//             break;
-//         // case ...:
-//         default:
-//             Logger::log(RED, ERROR, "Config file misconfigured: invalid directive");
-//             exit(EXIT_FAILURE);
-//         }
-//     }
-//     server.setLocation(location);
-// }
+        if (_content.compare(_i, keyword.length(), keyword) == 0)
+        {
+            _i += keyword.length();
+            if (_content[_i] == ' ')
+                return (type);
+            else
+                break ;
+        }
+    }
+    return (UNKNOWN);
+}
 
 /*
-parses the directive dependent of the directive type
+checks and returns the path for the location
+*/
+std::string    ConfigParser::_getLocationPath()
+{
+    for (; _i < _content.length(); _i++)
+    {
+        if (iswspace(_content[_i]))
+            break;
+    }
+    // in progress ...
+}
+
+/*
+parses the location directive and adds it to the corresponding server
+*/
+void    ConfigParser::_getLocation(Server &server)
+{
+    Directive   type;
+    location_t  location;
+    std::string parameter;
+    std::string path;
+
+    std::memset(&location, 0, sizeof(location));
+    path = _getLocationPath();
+    _skipWhiteSpaces();
+    if (_content[_i] != '{')
+    {
+        Logger::log(RED, ERROR, std::ostringstream() << "Config file misconfigured: missing '{'");
+        exit(EXIT_FAILURE);
+    }
+    for (; _i < _content.length(); _i++)
+    {
+        _skipWhiteSpaces();
+        if (_content[_i] == '}')
+            break ;
+        type = _getDirectiveType();
+        _skipWhiteSpaces();
+        parameter = _getParameter();
+        switch (type) {
+
+        case ALLOWED_METHODS:
+            handleAllowedMethods(parameter, location);
+            break;
+        case REDIRECTION:
+            handleRedirection(parameter, location);
+            break;
+        case ALIAS:
+            handleAlias(parameter, location);
+            break;
+        case AUTOINDEX:
+            handleAutoIndex(parameter, location);
+            break;
+        case INDEX:
+            handleIndex(parameter, location);
+            break;
+        case UPLOAD:
+            handleUpload(parameter, location);
+            break;
+        case CGI:
+            handleCgi(parameter, location);
+            break;
+        default:
+            Logger::log(RED, ERROR, std::ostringstream() << "Config file misconfigured: invalid directive");
+            exit(EXIT_FAILURE);
+        }
+    }
+    if (_content[_i] != '}')
+    {
+        Logger::log(RED, ERROR, std::ostringstream() << "Config file misconfigured: missing '}'");
+        exit(EXIT_FAILURE);
+    }
+    else
+        server.setLocation(path, location);
+}
+
+/*
+gets the next directive in the _content string and sets the setting to the corresponding server
 */
 void    ConfigParser::_getDirective(Server &server)
 {
-    std::string parameter;
-    Directive   type;
+    Directive       type;
+    std::string     parameter;
 
+    _skipWhiteSpaces();
     type = _getDirectiveType();
     _skipWhiteSpaces();
-    if (type != LOCATION && type != UNKNOWN)
+    if (type != UNKNOWN && type != LOCATION)
         parameter = _getParameter();
     switch (type) {
-    
+
     case ROOT:
         handleRoot(parameter, server);
         break;
@@ -483,24 +555,24 @@ void    ConfigParser::_getDirective(Server &server)
 
 // ==========   Member functions   =========== //
 /*
-parses the config file and adds the servers with the right settigs to the server_vector 
+Parses the config file and adds every server block with the corresponding settings
+to the _server_vector
 */
 void    ConfigParser::parse(std::string config)
 {
     _readConfig(config);
 
-    for(;_i < _content.length(); _i++)
+    for (; _i < _content.length(); _i++)
     {
         Server      server;
 
-        _findServerBlock();
-        _skipWhiteSpaces();
-        for (;_i < _content.length();)
+        _findNextServerBlock();
+        while (_i < _content.length())
         {
             _getDirective(server);
             _skipWhiteSpaces();
             if (_content[_i] == '}')
-                break ;
+                break;
         }
         if (_content[_i] != '}')
         {
@@ -509,6 +581,6 @@ void    ConfigParser::parse(std::string config)
         }
         else
             _i++;
-        _servers.push_back(server);
+        _server_vector.push_back(server);
     }
 }
