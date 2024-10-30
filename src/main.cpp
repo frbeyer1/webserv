@@ -5,6 +5,7 @@ int main(int argc, char **argv)
 {
     std::string config;
 
+    Logger::setLogLvl(DEBUG);
     if (argc == 1)
         config = DEFAULT_CONFIG;
     else if (argc == 2)
@@ -17,8 +18,8 @@ int main(int argc, char **argv)
     ServerManager   master;
 
     master.configure(config);
-    // master.setup();
-    // master.boot();
+    master.setup();
+    master.boot();
     return (EXIT_SUCCESS);
 }
 
@@ -39,5 +40,6 @@ int main(int argc, char **argv)
 
 // other stuff:
 // -    init default error pages
+// -    not blockin for epoll_wait
 
 // use read or recv and write or send ???

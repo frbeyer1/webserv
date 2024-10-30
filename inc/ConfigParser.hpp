@@ -54,4 +54,5 @@ public:
 };
 
 // Utils
-uint32_t ipStringToNumeric(const std::string& ip);
+uint32_t    ipStringToNumeric(const std::string& ip);
+std::string sockaddrToIpString(const struct sockaddr_in &addr);

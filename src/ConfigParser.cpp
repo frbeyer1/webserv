@@ -39,6 +39,21 @@ uint32_t ipStringToNumeric(const std::string& ip)
     return (numericIp);
 }
 
+/*
+return and sockaddr_in as an readable ip string
+*/
+std::string sockaddrToIpString(const struct sockaddr_in &addr)
+{
+    unsigned char* ip = (unsigned char*)&addr.sin_addr.s_addr;
+    std::ostringstream oss;
+
+    oss << (int)ip[0] << "." 
+        << (int)ip[1] << "." 
+        << (int)ip[2] << "." 
+        << (int)ip[3];
+    
+    return (oss.str());
+}
 
 /*
 parses an parameter string of the config and sets root on the corresponding server
@@ -220,10 +235,7 @@ static void handleErrorPage(std::string parameter, Server &server)
             page_path.push_back(parameter[i]);
         }
     }
-    std::cout << "Before: " << page_path << std::endl;
-    page_path = "/" + server.getRoot() + page_path;
-    std::cout << "After: " << page_path << std::endl;
-
+    page_path = server.getRoot() + page_path;
     if (stat(page_path.c_str(), &buf) != 0 || S_ISREG(buf.st_mode) == 0)
     {
         Logger::log(RED, ERROR, "Config file misconfigured: error_page directive: error page path invalid");
@@ -456,7 +468,6 @@ goes forward in the _content string and returns the directive type
 Directive ConfigParser::_getDirectiveType()
 {
     std::map<std::string, Directive> map;
-
     map["root"] = ROOT;
     map["listen"] = LISTEN;
     map["server_name"] = SERVER_NAME;
@@ -526,6 +537,7 @@ void    ConfigParser::_getLocation(Server &server)
         Logger::log(RED, ERROR, "Config file misconfigured: missing '{'");
         exit(EXIT_FAILURE);
     }
+    _i++;
     for (; _i < _content.length(); _i++)
     {
         _skipWhiteSpaces();
@@ -558,7 +570,7 @@ void    ConfigParser::_getLocation(Server &server)
             handleCgi(parameter, location);
             break;
         default:
-            Logger::log(RED, ERROR, "Config file misconfigured: invalid directive");
+            Logger::log(RED, ERROR, "Config file misconfigured: invalid directive in location");
             exit(EXIT_FAILURE);
         }
     }
@@ -567,8 +579,8 @@ void    ConfigParser::_getLocation(Server &server)
         Logger::log(RED, ERROR, "Config file misconfigured: missing '}'");
         exit(EXIT_FAILURE);
     }
-    else
-        server.setLocation(path, location);
+    _i++;
+    server.setLocation(path, location);
 }
 
 /*
@@ -608,7 +620,7 @@ void    ConfigParser::_getDirective(Server &server)
         _getLocation(server);
         break;
     default:
-        Logger::log(RED, ERROR, "Config file misconfigured: invalid directive");
+        Logger::log(RED, ERROR, "Config file misconfigured: invalid directive in server block");
         exit(EXIT_FAILURE);
     }
 }
@@ -639,8 +651,8 @@ void    ConfigParser::parse(std::string config)
             Logger::log(RED, ERROR, "Config file misconfigured: missing '}'");
             exit(EXIT_FAILURE);
         }
-        else
-            _i++;
+        _i++;
         _server_vector.push_back(server);
+        _skipWhiteSpaces();
     }
 }

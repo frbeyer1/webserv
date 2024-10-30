@@ -34,11 +34,11 @@ static  bool    checkDuplicates(std::vector<Server> &servers)
     bool    duplicate;
 
     duplicate = false;
-    for (std::vector<Server>::iterator it = servers.begin(); it != servers.end(); it++)
+    for (size_t i = 0; i < servers.size(); ++i)
     {
-        for (std::vector<Server>::iterator it2 = servers.begin(); it != servers.end(); it2++)
+        for (size_t j = i + 1; j < servers.size(); ++j)
         {
-            if (it->getHost() == it2->getHost() && it->getPort() == it2->getPort())
+            if (servers[i].getHost() == servers[j].getHost() && servers[i].getPort() == servers[j].getPort())
                 duplicate = true;
         }
     }
@@ -49,7 +49,7 @@ static  bool    checkDuplicates(std::vector<Server> &servers)
 /*
 accepts new connection and puts the new client into the client_map and epoll instance
 */
-void    ServerManager::_acceptNewConnection(int server_fd)
+void    ServerManager::_acceptNewConnection(int server_fd, int epoll_fd)
 {
     if (_server_map.size() > MAX_CONNECTIONS)
     {
@@ -64,12 +64,12 @@ void    ServerManager::_acceptNewConnection(int server_fd)
     client_fd = _server_map[server_fd].acceptConnection();
     client.setClientFd(client_fd);
     client.setClientAddress(_server_map[server_fd].getSocketAddress());
-    addToEpollInstance(_epoll_fd, client_fd);
-    if (_client_map.count(client_fd) != 0)
+    if (_client_map.count(client_fd) > 0)
         _client_map.erase(client_fd);
     _client_map.insert(std::make_pair(client_fd, client));
+    addToEpollInstance(epoll_fd, client_fd);
     std::ostringstream oss;
-    oss << "Accpted new Connection from " << client.getClientAddress().sin_addr.s_addr << ", on fd " << client_fd;
+    oss << "Accpted new Connection from " << sockaddrToIpString(client.getClientAddress()) << ", on fd " << client_fd;
     Logger::log(WHITE, INFO, oss.str());
 }
 
@@ -159,7 +159,7 @@ void    ServerManager::configure(std::string config)
     ConfigParser    parser(_servers);
 
     parser.parse(config);
-    Logger::log(WHITE, DEBUG, "Finished config file parsing");
+    Logger::log(GREY, DEBUG, "Finished config file parsing");
 }
 
 /*
@@ -181,7 +181,7 @@ void    ServerManager::setup()
         oss << "Server setup: ServerName[" << it->getSeverName() << "] Host[" << it->getIp() << "] Port[" << it->getPort() << "]";
         Logger::log(WHITE, INFO, oss.str());
     }
-    Logger::log(WHITE, DEBUG, "Setting up servers finished");
+    Logger::log(GREY, DEBUG, "Setting up servers finished");
 }
 
 /*
@@ -217,7 +217,7 @@ void    ServerManager::boot()
             int fd = event_list[i].data.fd;
             
             if (_server_map.count(fd))
-                _acceptNewConnection(fd);
+                _acceptNewConnection(fd, _epoll_fd);
             else if (_client_map.count(fd) && event_list[i].events & EPOLLIN)
                 _readRequest(fd);
             else if (_client_map.count(fd) && event_list[i].events & EPOLLOUT)

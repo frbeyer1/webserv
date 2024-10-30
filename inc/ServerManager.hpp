@@ -9,13 +9,13 @@ class Server;
 class ServerManager
 {
 private:
+    int                       _epoll_fd;
     std::vector<Server>       _servers;
     std::map<int, Server>     _server_map;
     std::map<int, Client>     _client_map;
-    int                       _epoll_fd;
 
 // Private member functions
-    void    _acceptNewConnection(int fd);
+    void    _acceptNewConnection(int fd, int epoll_fd);
     void    _closeConnection(int fd);
     void    _checkTimeout();
     void    _readRequest(int fd);

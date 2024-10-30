@@ -46,7 +46,7 @@ static std::string getLogLvlStr(LogLvl loglvl)
         case ERROR:
             return (str = "  [ERROR]  ");
         case INFO:
-            return (str = "  [INFO]  ");
+            return (str = "  [INFO]   ");
         case DEBUG:
             return (str = "  [DEBUG]  ");
         default:
