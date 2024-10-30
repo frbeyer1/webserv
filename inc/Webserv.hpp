@@ -21,11 +21,9 @@
 #include <map>
 #include <vector>
 
-#include "HttpRequest.hpp"
-#include "ServerManager.hpp"
-#include "Server.hpp"
 #include "ConfigParser.hpp"
-#include "Client.hpp"
+#include "Server.hpp"
+#include "HttpRequest.hpp"
 #include "Logger.hpp"
 
 /*   Logger Settings   */
@@ -44,6 +42,7 @@
 
 /*   Default Config Settings   */
 #define DEFAULT_CONFIG                              "conf/default.conf"
+#define DEFAULT_INDEX                               "index.html"
 #define DEFAULT_PORT                                80
 #define DEFAULT_HOST                                "127.0.0.1"
 #define DEFAULT_NAME                                "default"

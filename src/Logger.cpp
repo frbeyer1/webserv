@@ -58,7 +58,7 @@ static std::string getLogLvlStr(LogLvl loglvl)
 /*
 logs an message depending on the log settings
 */
-void    Logger::log(const char *color, LogLvl loglvl, std::ostringstream msg)
+void    Logger::log(const char *color, LogLvl loglvl, std::string msg)
 {
     if (_state == OFF)
         return ;
@@ -70,12 +70,12 @@ void    Logger::log(const char *color, LogLvl loglvl, std::ostringstream msg)
 
         if (outFile.is_open())
         {
-            outFile << getTimestamp() << getLogLvlStr(loglvl) << msg.str() << std::endl;
+            outFile << getTimestamp() << getLogLvlStr(loglvl) << msg << std::endl;
             outFile.close();
         }
         else
             std::cerr << RED << getTimestamp() << getLogLvlStr(ERROR) << "Could not open file: " << LOGFILE_NAME << RESET << std::endl;
     }
     else if (_mode == STDOUT)
-        std::cout << color << getTimestamp() << getLogLvlStr(loglvl) << msg.str() << RESET << std::endl;
+        std::cout << color << getTimestamp() << getLogLvlStr(loglvl) << msg << RESET << std::endl;
 }

@@ -10,7 +10,7 @@ int main(int argc, char **argv)
         config = argv[1];
     else
     {
-        Logger::log(RED, ERROR, std::ostringstream() << "Invalid Arguments: try './webserv [configuration file]'");
+        Logger::log(RED, ERROR, "Invalid Arguments: try './webserv [configuration file]'");
         return (EXIT_FAILURE);
     }
     ServerManager   master;
@@ -34,8 +34,6 @@ int main(int argc, char **argv)
 
 // config parser:
 // -    what if location directive is empty
-// -    should directives with paths have the full path?? or dependent on root (so it needs root first???)
-//      -> takes root if there , and takes full path when no root
 // -    max config lenght???
 
 // other stuff:

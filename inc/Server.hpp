@@ -29,6 +29,7 @@ private:
     std::string                         _ip;
     std::string                         _root;
     size_t                              _client_max_body_size;
+    std::string                         _index;
     std::map<int, std::string>          _error_pages;
     std::map<std::string, location_t>   _locations;
     int                                 _server_fd;
@@ -51,7 +52,6 @@ public:
     size_t                        getClientMaxBodySize() const;
     std::map<int, std::string>&   getErrorPages() ;
     struct sockaddr_in            getSocketAddress() const;
-    
 
 // Setters
     void                          setRoot(std::string root);
@@ -61,6 +61,7 @@ public:
     void                          setServerName(std::string server_name);
     void                          setClientMaxBodySize(size_t client_max_body_size);
     void                          setErrorPage(int status_code, std::string page_path);
+    void                          setIndex(std::string index);
     void                          setLocation(std::string path, location_t location);
 
 // Member functions

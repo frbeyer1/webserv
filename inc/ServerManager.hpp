@@ -1,10 +1,10 @@
 #pragma once
 
 #include "Webserv.hpp"
+#include "Client.hpp"
+#include "Response.hpp"
 
 class Server;
-
-class Client;
 
 class ServerManager
 {

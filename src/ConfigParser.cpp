@@ -49,14 +49,14 @@ static void handleRoot(std::string parameter, Server &server)
 
     if (stat(parameter.c_str(), &buf) != 0)
     {
-        Logger::log(RED, ERROR, std::ostringstream() << "Error: Config file misconfigured: root directive: path invalid");
+        Logger::log(RED, ERROR, "Error: Config file misconfigured: root directive: path invalid");
         exit(EXIT_FAILURE);
     }
     if (S_ISDIR(buf.st_mode))
         server.setRoot(parameter);
     else
     {
-        Logger::log(RED, ERROR, std::ostringstream() << "Config file misconfigured: root directive: is no directory");
+        Logger::log(RED, ERROR, "Config file misconfigured: root directive: is no directory");
         exit(EXIT_FAILURE);
     }
 }
@@ -94,7 +94,7 @@ static void handleListen(std::string parameter, Server &server)
     {
         if (!isdigit(ip_str[i]) && ip_str[i] != '.')
         {
-            Logger::log(RED, ERROR, std::ostringstream() << "Config file misconfigured: listen directive: IP invalid");
+            Logger::log(RED, ERROR, "Config file misconfigured: listen directive: IP invalid");
             exit(EXIT_FAILURE);
         }
     }
@@ -104,7 +104,9 @@ static void handleListen(std::string parameter, Server &server)
     }
     catch(const std::exception& e)
     {
-        Logger::log(RED, ERROR, std::ostringstream() << "Config file misconfigured: listen directive: IP invalid: " << e.what());
+        std::ostringstream oss;
+        oss << "Config file misconfigured: listen directive: IP invalid: " << e.what();
+        Logger::log(RED, ERROR, oss.str());
         exit(EXIT_FAILURE);
     }
     server.setHost(host);
@@ -113,14 +115,14 @@ static void handleListen(std::string parameter, Server &server)
     {
         if (!isdigit(port_str[i]))
         {
-            Logger::log(RED, ERROR, std::ostringstream() << "Config file misconfigured: listen directive: port invalid");
+            Logger::log(RED, ERROR, "Config file misconfigured: listen directive: port invalid");
             exit(EXIT_FAILURE);
         }
     }
     port = atoi(port_str.c_str());
     if (port < 1 || port > 65636)
     {
-        Logger::log(RED, ERROR, std::ostringstream() << "Config file misconfigured: listen directive: port invalid");
+        Logger::log(RED, ERROR, "Config file misconfigured: listen directive: port invalid");
         exit(EXIT_FAILURE);
     }
     server.setPort(port);
@@ -143,7 +145,7 @@ static void handleServerName(std::string parameter, Server &server)
         if ((parameter[i] < 'a' || parameter[i] > 'z') && (parameter[i] < 'A' || parameter[i] > 'Z') 
             && (parameter[i] < '0' || parameter[i] > '9') && parameter[i] != '.' && parameter[i] != '-' && parameter[i] != '~' && parameter[i] != '_' )
         {
-            Logger::log(RED, ERROR, std::ostringstream() << "Config file misconfigured: server_name directive: invalid character");
+            Logger::log(RED, ERROR, "Config file misconfigured: server_name directive: invalid character");
             exit(EXIT_FAILURE);
         }
     }
@@ -161,7 +163,7 @@ static void handleClientMaxBodySize(std::string parameter, Server &server)
     {
         if (!isdigit(parameter[i]))
         {
-            Logger::log(RED, ERROR, std::ostringstream() << "Config file misconfigured: client_max_body_size directive: invalid character");
+            Logger::log(RED, ERROR, "Config file misconfigured: client_max_body_size directive: invalid character");
             exit(EXIT_FAILURE);
         }
     }
@@ -178,7 +180,7 @@ static void handleErrorPage(std::string parameter, Server &server)
     std::string status_code_str;
     std::string page_path;
     struct stat buf;
-    size_t      i = 0;
+    size_t i = 0;
 
     for (; i < parameter.length(); i++)
     {
@@ -188,14 +190,14 @@ static void handleErrorPage(std::string parameter, Server &server)
             status_code_str.push_back(parameter[i]);
         else
         {
-            Logger::log(RED, ERROR, std::ostringstream() << "Config file misconfigured: error_page directive: status code invalid");
+            Logger::log(RED, ERROR, "Config file misconfigured: error_page directive: status code invalid");
             exit(EXIT_FAILURE);
         }
     }
     status_code = atoi(status_code_str.c_str());
     if (i != 3 || status_code < 100 || status_code > 599)
     {
-        Logger::log(RED, ERROR, std::ostringstream() << "Config file misconfigured: error_page directive: status code invalid");
+        Logger::log(RED, ERROR, "Config file misconfigured: error_page directive: status code invalid");
         exit(EXIT_FAILURE);
     }
     for (; i < parameter.length(); i++)
@@ -204,20 +206,21 @@ static void handleErrorPage(std::string parameter, Server &server)
         {
             if (!isspace(parameter[i]))
             {
-                Logger::log(RED, ERROR, std::ostringstream() << "Config file misconfigured: error_page directive: missing space");
+                Logger::log(RED, ERROR, "Config file misconfigured: error_page directive: missing space");
                 exit(EXIT_FAILURE);
             }
         }
         page_path.push_back(parameter[i]);
     }
+    page_path = server.getRoot() + page_path;
     if (stat(page_path.c_str(), &buf) != 0 || S_ISREG(buf.st_mode) == 0)
     {
-        Logger::log(RED, ERROR, std::ostringstream() << "Config file misconfigured: error_page directive: error page path invalid");
+        Logger::log(RED, ERROR, "Config file misconfigured: error_page directive: error page path invalid");
         exit(EXIT_FAILURE);
     }
     if (access(page_path.c_str(), R_OK))
     {
-        Logger::log(RED, ERROR, std::ostringstream() << "Config file misconfigured: error_page directive: error page has no read rights");
+        Logger::log(RED, ERROR, "Config file misconfigured: error_page directive: error page has no read rights");
         exit(EXIT_FAILURE);
     }
     if (server.getErrorPages().count(status_code))
@@ -246,7 +249,7 @@ void handleAllowedMethods(std::string parameter, location_t &location)
                 location.allowed_methods.allow_delete = true;
             else
             {
-                Logger::log(RED, ERROR, std::ostringstream() << "Config file misconfigured: allowed_method directive: invalid method");
+                Logger::log(RED, ERROR, "Config file misconfigured: allowed_method directive: invalid method");
                 exit(EXIT_FAILURE);
             }
             while (parameter.length() && iswspace(parameter[i]))
@@ -268,12 +271,38 @@ static void handleAlias(std::string parameter, location_t &location)
 
 static void handleAutoIndex(std::string parameter, location_t &location)
 {
+    if (parameter == "off")
+        location.autoindex = false;
+    else if (parameter == "on")
+        location.autoindex = true;
+    else
+    {
+        Logger::log(RED, ERROR, "Config file misconfigured: autoindex directive: invalid parameter (either 'on' or 'off')");
+        exit(EXIT_FAILURE);
+    }
+}
+
+static void handleIndexLocation(std::string parameter, location_t &location)
+{
 
 }
 
-static void handleIndex(std::string parameter, location_t &location)
+static void handleIndex(std::string parameter, Server &server)
 {
+    std::string index = server.getRoot() + parameter;
+    struct stat buf;
 
+    if (stat(index.c_str(), &buf) != 0 || S_ISREG(buf.st_mode) == 0)
+    {
+        Logger::log(RED, ERROR, "Config file misconfigured: index directive: index file is invalid");
+        exit(EXIT_FAILURE);
+    }
+    if (access(index.c_str(), R_OK))
+    {
+        Logger::log(RED, ERROR, "Config file misconfigured: index directive: index file has no read rights");
+        exit(EXIT_FAILURE);
+    }
+    server.setIndex(index);
 }
 
 static void handleUpload(std::string parameter, location_t &location)
@@ -298,13 +327,13 @@ void    ConfigParser::_readConfig(std::string config)
 
     if (file.fail())
     {
-        Logger::log(RED, ERROR, std::ostringstream() << "Unable to open file: " << config);
+        Logger::log(RED, ERROR, (std::ostringstream() << "Unable to open file: " << config).str());
         exit(EXIT_FAILURE);
     }
     buffer << file.rdbuf();
     file.close();
     _content = buffer.str();
-    Logger::log(GREY, DEBUG, std::ostringstream() << "Finished with reading file: " << config);
+    Logger::log(GREY, DEBUG, (std::ostringstream() << "Finished with reading file: " << config).str());
 }
 
 /*
@@ -354,13 +383,13 @@ void    ConfigParser::_findNextServerBlock()
             }
             else
             {
-                Logger::log(RED, ERROR, std::ostringstream() << "Config file misconfigured: missing '{'");
+                Logger::log(RED, ERROR, "Config file misconfigured: missing '{'");
                 exit(EXIT_FAILURE);
             }
         }
         else
         {
-            Logger::log(RED, ERROR, std::ostringstream() << "Config file misconfigured: found something else than server block");
+            Logger::log(RED, ERROR, "Config file misconfigured: found something else than server block");
             exit(EXIT_FAILURE);
         }
     }
@@ -384,7 +413,7 @@ std::string ConfigParser::_getParameter()
         {
             if (iswspace(_content[_i - 1]))
             {
-                Logger::log(RED, ERROR, std::ostringstream() << "Config file misconfigured: invalid syntax: found whitespace before ';'");
+                Logger::log(RED, ERROR, "Config file misconfigured: invalid syntax: found whitespace before ';'");
                 exit(EXIT_FAILURE);
             }
             _i++;
@@ -394,7 +423,7 @@ std::string ConfigParser::_getParameter()
     }
     if (!found)
     {
-        Logger::log(RED, ERROR, std::ostringstream() << "Config file misconfigured: missing ';'");
+        Logger::log(RED, ERROR, "Config file misconfigured: missing ';'");
         exit(EXIT_FAILURE);
     }
     parameter = _content.substr(start, _i - start - 1);
@@ -443,12 +472,19 @@ checks and returns the path for the location
 */
 std::string    ConfigParser::_getLocationPath()
 {
+    std::string path;
+
     for (; _i < _content.length(); _i++)
     {
         if (iswspace(_content[_i]))
             break;
+        else
+            path.push_back(_content[_i]);
     }
     // in progress ...
+
+
+    return (path);
 }
 
 /*
@@ -466,7 +502,7 @@ void    ConfigParser::_getLocation(Server &server)
     _skipWhiteSpaces();
     if (_content[_i] != '{')
     {
-        Logger::log(RED, ERROR, std::ostringstream() << "Config file misconfigured: missing '{'");
+        Logger::log(RED, ERROR, "Config file misconfigured: missing '{'");
         exit(EXIT_FAILURE);
     }
     for (; _i < _content.length(); _i++)
@@ -492,7 +528,7 @@ void    ConfigParser::_getLocation(Server &server)
             handleAutoIndex(parameter, location);
             break;
         case INDEX:
-            handleIndex(parameter, location);
+            handleIndexLocation(parameter, location);
             break;
         case UPLOAD:
             handleUpload(parameter, location);
@@ -501,13 +537,13 @@ void    ConfigParser::_getLocation(Server &server)
             handleCgi(parameter, location);
             break;
         default:
-            Logger::log(RED, ERROR, std::ostringstream() << "Config file misconfigured: invalid directive");
+            Logger::log(RED, ERROR, "Config file misconfigured: invalid directive");
             exit(EXIT_FAILURE);
         }
     }
     if (_content[_i] != '}')
     {
-        Logger::log(RED, ERROR, std::ostringstream() << "Config file misconfigured: missing '}'");
+        Logger::log(RED, ERROR, "Config file misconfigured: missing '}'");
         exit(EXIT_FAILURE);
     }
     else
@@ -544,11 +580,14 @@ void    ConfigParser::_getDirective(Server &server)
     case ERROR_PAGE:
         handleErrorPage(parameter, server);
         break;
+    case INDEX:
+        handleIndex(parameter, server);
+        break;
     case LOCATION:
         _getLocation(server);
         break;
     default:
-        Logger::log(RED, ERROR, std::ostringstream() << "Config file misconfigured: invalid directive");
+        Logger::log(RED, ERROR, "Config file misconfigured: invalid directive");
         exit(EXIT_FAILURE);
     }
 }
@@ -576,7 +615,7 @@ void    ConfigParser::parse(std::string config)
         }
         if (_content[_i] != '}')
         {
-            Logger::log(RED, ERROR, std::ostringstream() << "Config file misconfigured: missing '}'");
+            Logger::log(RED, ERROR, "Config file misconfigured: missing '}'");
             exit(EXIT_FAILURE);
         }
         else

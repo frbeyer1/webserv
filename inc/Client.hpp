@@ -1,21 +1,28 @@
 #pragma once
 
 #include "Webserv.hpp"
+#include "HttpRequest.hpp"
+#include "Response.hpp"
 
 class Client
 {
 private:
     struct sockaddr_in  _client_address;
     int                 _client_fd;
-    
     time_t              _last_msg_time;
 
 public:
     HttpRequest         request;
-    Server              &server;
+    Server              server;
+
+// Default Constructor
+    Client();
 
 // Constructor
     Client(Server &s);
+
+// Copy Constructor
+    Client(const Client &rhs);
 
 // Deconstructor
     ~Client();

@@ -21,7 +21,7 @@ static void addToEpollInstance(int epoll_fd, int add_fd)
     event.data.fd = add_fd;
     if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, add_fd, &event) == -1)
     {
-        Logger::log(RED, ERROR, std::ostringstream() << "adding to epoll instance failed");
+        Logger::log(RED, ERROR, "adding to epoll instance failed");
         exit(EXIT_FAILURE);
     }
 }
@@ -53,7 +53,9 @@ void    ServerManager::_acceptNewConnection(int server_fd)
 {
     if (_server_map.size() > MAX_CONNECTIONS)
     {
-        Logger::log(YELLOW, INFO, std::ostringstream() << "Did not accept connection, because there are more than " << MAX_CONNECTIONS);
+        std::ostringstream oss;
+        oss << "Did not accept connection, because there are more than " << MAX_CONNECTIONS;
+        Logger::log(YELLOW, INFO, oss.str());
         return ;
     }
     int     client_fd;
@@ -66,7 +68,9 @@ void    ServerManager::_acceptNewConnection(int server_fd)
     if (_client_map.count(client_fd) != 0)
         _client_map.erase(client_fd);
     _client_map.insert(std::make_pair(client_fd, client));
-    Logger::log(WHITE, INFO, std::ostringstream() << "Accpted new Connection from " << client.getClientAddress().sin_addr.s_addr << ", on fd " << client_fd);
+    std::ostringstream oss;
+    oss << "Accpted new Connection from " << client.getClientAddress().sin_addr.s_addr << ", on fd " << client_fd;
+    Logger::log(WHITE, INFO, oss.str());
 }
 
 /*
@@ -76,12 +80,14 @@ void    ServerManager::_closeConnection(int fd)
 {
     if (epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, fd, NULL) == -1)
     {
-        Logger::log(RED, ERROR, std::ostringstream() << "deleting from epoll instance failed");
+        Logger::log(RED, ERROR, "deleting from epoll instance failed");
         exit(EXIT_FAILURE);
     }
     close(fd);
     _client_map.erase(fd);
-    Logger::log(WHITE, INFO, std::ostringstream() << "closed Connection " << fd);
+    std::ostringstream oss;
+    oss  << "closed Connection " << fd;
+    Logger::log(WHITE, INFO, oss.str());
 }
 
 /*
@@ -93,7 +99,9 @@ void    ServerManager::_checkTimeout()
     {
         if (time(NULL) - it->second.getLastMsgTime() > CLIENT_CONNECTION_TIMEOUT)
         {
-            Logger::log(WHITE, INFO, std::ostringstream() << "Client timeout: Client_FD[" << it->second.getClientFd() << "], closing connection ...");
+            std::ostringstream oss;
+            oss  << "Client timeout: Client_FD[" << it->second.getClientFd() << "], closing connection ...";
+            Logger::log(WHITE, INFO, oss.str());
             _closeConnection(it->first);
         }
     }
@@ -115,7 +123,9 @@ void    ServerManager::_readRequest(int fd)
     }
     else if (bytes_read < 0)
     {
-        Logger::log(RED, ERROR, std::ostringstream() << "Error: read error on fd " << fd);
+        std::ostringstream oss;
+        oss << "Error: read error on fd " << fd;
+        Logger::log(RED, ERROR, oss.str());
         _closeConnection(fd);
         return ;
     }
@@ -137,6 +147,7 @@ void    ServerManager::_readRequest(int fd)
 void    ServerManager::_sendResponse(int fd)
 {
     // send response
+    (void)fd;
 }
 
 // ==========   Member functions   =========== //
@@ -148,7 +159,7 @@ void    ServerManager::configure(std::string config)
     ConfigParser    parser(_servers);
 
     parser.parse(config);
-    Logger::log(WHITE, DEBUG, std::ostringstream() << "Finished config file parsing");
+    Logger::log(WHITE, DEBUG, "Finished config file parsing");
 }
 
 /*
@@ -156,19 +167,21 @@ setting up all servers
 */
 void    ServerManager::setup()
 {
-    Logger::log(WHITE, INFO, std::ostringstream() << "Setting up servers...");
+    Logger::log(WHITE, INFO, "Setting up servers...");
     if (checkDuplicates(_servers))
     {
-        Logger::log(RED, ERROR, std::ostringstream() << "Could not setup servers, because of duplicates in config file");
+        Logger::log(RED, ERROR, "Could not setup servers, because of duplicates in config file");
         exit(EXIT_FAILURE);
     }
     for (std::vector<Server>::iterator it = _servers.begin(); it != _servers.end(); it++)
     {
         it->setup();
         _server_map.insert(std::pair<int, Server>(it->getServerFd(), *it));
-        Logger::log(WHITE, INFO, std::ostringstream() << "Server setup: ServerName[" << it->getSeverName() << "] Host[" << it->getIp() << "] Port[" << it->getPort() << "]");
+        std::ostringstream oss;
+        oss << "Server setup: ServerName[" << it->getSeverName() << "] Host[" << it->getIp() << "] Port[" << it->getPort() << "]";
+        Logger::log(WHITE, INFO, oss.str());
     }
-    Logger::log(WHITE, DEBUG, std::ostringstream() << "Setting up servers finished");
+    Logger::log(WHITE, DEBUG, "Setting up servers finished");
 }
 
 /*
@@ -176,12 +189,12 @@ starts listening on the servers and setting up of the epoll instance for I/O mul
 */
 void    ServerManager::boot()
 {
-    Logger::log(WHITE, INFO, std::ostringstream() << "Booting Servers ...");
+    Logger::log(WHITE, INFO, "Booting Servers ...");
     // creates epoll instance
     int _epoll_fd = epoll_create(1);
     if (_epoll_fd == -1)
     {
-        Logger::log(RED, ERROR, std::ostringstream() << "creating epoll instace failed");
+        Logger::log(RED, ERROR, "creating epoll instace failed");
         exit(EXIT_FAILURE);
     }
     // adds all server_fds to epoll instance and starts listening on them
@@ -196,7 +209,7 @@ void    ServerManager::boot()
         int num_events = epoll_wait(_epoll_fd, event_list, MAX_EPOLL_EVENTS, -1);
         if (num_events == -1)
         {
-            Logger::log(RED, ERROR, std::ostringstream() << "waiting for event on the epoll instance failed");
+            Logger::log(RED, ERROR, "waiting for event on the epoll instance failed");
             exit(EXIT_FAILURE);
         }
         for (int i = 0; i < num_events; i++)

@@ -10,13 +10,16 @@ Server::Server()
     }
     catch(const std::exception& e)
     {
-        Logger::log(RED, ERROR, std::ostringstream() << "Webserv header misconfigured: DEFAULT_HOST: ip invalid: " << e.what());
+        std::ostringstream oss;
+        oss << "Webserv header misconfigured: DEFAULT_HOST: ip invalid: " << e.what();
+        Logger::log(RED, ERROR, oss.str());
         exit(EXIT_FAILURE);
     }
     _port = DEFAULT_PORT;
     _server_name = DEFAULT_NAME;
     _root = DEFAULT_ROOT;
     _client_max_body_size = DEFAULT_CLIENT_MAX_BODY_SIZE;
+    _index = DEFAULT_INDEX;
     // _error_pages = ;
 }
 
@@ -107,6 +110,11 @@ void    Server::setErrorPage(int status_code, std::string page_path)
     _error_pages.insert(std::pair<int, std::string>(status_code, page_path));
 }
 
+void    Server::setIndex(std::string index)
+{
+    _index = index;
+}
+
 void    Server::setLocation(std::string path, location_t location)
 {
     _locations.insert(std::make_pair(path, location));
@@ -122,7 +130,7 @@ static void    setNonBlocking(int fd)
     int flags = fcntl(fd, F_GETFL, 0);
     if (flags == -1)
     {
-        Logger::log(RED, ERROR, std::ostringstream() << "could not get flags from file descriptor");
+        Logger::log(RED, ERROR, "could not get flags from file descriptor");
         exit(EXIT_FAILURE);
     }
     // Set the flags to include O_NONBLOCK
@@ -130,7 +138,7 @@ static void    setNonBlocking(int fd)
     // Set the new flags for the file descriptor
     if (fcntl(fd, F_SETFL, flags) == -1)
     {
-        Logger::log(RED, ERROR, std::ostringstream() << "could not set flags to file descriptor");
+        Logger::log(RED, ERROR, "could not set flags to file descriptor");
         exit(EXIT_FAILURE);
     }
 }
@@ -145,14 +153,14 @@ void    Server::setup()
     _server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (_server_fd < 0)
     {
-        Logger::log(RED, ERROR, std::ostringstream() << "Could not set up socket");
+        Logger::log(RED, ERROR, "Could not set up socket");
         exit(EXIT_FAILURE);
     }
     // 2. sets the socket to reuse ports
     const int opt = 1;
     if (setsockopt(_server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
     {
-        Logger::log(RED, ERROR, std::ostringstream() << "setsockopt (SO_REUSEADDR) failed");
+        Logger::log(RED, ERROR, "setsockopt (SO_REUSEADDR) failed");
         exit(EXIT_FAILURE);
     }
     // 3. setup and bind the address to the socket
@@ -162,7 +170,7 @@ void    Server::setup()
     std::memset(_socket_address.sin_zero, '\0', sizeof(_socket_address.sin_zero));
     if (bind(_server_fd, (struct sockaddr *)&_socket_address, sizeof(_socket_address)) < 0)
     {
-        Logger::log(RED, ERROR, std::ostringstream() << "Could not bind socket");
+        Logger::log(RED, ERROR, "Could not bind socket");
         exit(EXIT_FAILURE);
     }
 }
@@ -174,7 +182,7 @@ void    Server::startListening()
 {
     if (listen(_server_fd, BACKLOG) < 0)
     {
-        Logger::log(RED, ERROR, std::ostringstream() << "Socket could not listen");
+        Logger::log(RED, ERROR, "Socket could not listen");
         exit(EXIT_FAILURE);
     }
 }
@@ -189,7 +197,7 @@ int    Server::acceptConnection()
 
     if ((new_socket = accept(_server_fd, (struct sockaddr *)&_socket_address, (socklen_t*)&addrlen))<0)
     {
-        Logger::log(RED, ERROR, std::ostringstream() << "Socket could not accept connection");
+        Logger::log(RED, ERROR, "Socket could not accept connection");
         exit(EXIT_FAILURE);        
     }
     setNonBlocking(new_socket);

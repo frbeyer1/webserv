@@ -79,6 +79,9 @@ public:
 // Constructor
     HttpRequest();
 
+// Copy COnstructor
+    HttpRequest(const HttpRequest &rhs);
+
 // Deconstructor
     ~HttpRequest();
 
@@ -102,4 +105,3 @@ public:
     void                                        clear();
 
 };
-

@@ -7,6 +7,36 @@ HttpRequest::HttpRequest()
     _client_max_body_size = 0;
 }
 
+// ===========   Copy Constructor   ========== //
+HttpRequest::HttpRequest(const HttpRequest &rhs) : _ss(rhs._ss.str())
+{
+    if (this != &rhs)
+	{
+		_state = rhs._state;
+        _error = rhs._error;
+        _method = rhs._method;
+        _path = rhs._path;
+        _query = rhs._query;
+        _fragment = rhs._fragment;
+        _version_major = rhs._version_major;
+        _version_minor = rhs._version_minor;
+        _headers = rhs._headers;
+        _body = rhs._body;
+        _method_str = rhs._method_str;
+        _header_field_name = rhs._header_field_name;
+        _header_field_value = rhs._header_field_value;
+        _chunk_lenght_str = rhs._chunk_lenght_str;
+        _uri_len = rhs._uri_len;
+        _header_len = rhs._header_len;
+        _body_len = rhs._body_len;
+        _chunk_len = rhs._chunk_len;
+        _body_flag = rhs._body_flag;
+        _chunked_transfer_flag = rhs._chunked_transfer_flag;
+        _client_max_body_size = rhs._client_max_body_size;
+	}
+	return ;
+}
+
 // ============   Deconstructor   ============ //
 HttpRequest::~HttpRequest()
 {
@@ -188,6 +218,8 @@ void    HttpRequest::clear()
     _chunk_len = 0;
     _body_flag = false;
     _chunked_transfer_flag = false;
+    _ss.str("");
+    _ss.clear();
 }
 
 /*

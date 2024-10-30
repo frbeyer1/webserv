@@ -2,6 +2,8 @@
 
 #include "Webserv.hpp"
 
+class Server;
+
 enum Directive
 {
     ROOT,
