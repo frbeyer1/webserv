@@ -14,11 +14,10 @@ Client::Client(Server &s) :server(s), request()
 }
 
 // ===========  Copy Constructor   =========== //
-Client::Client(const Client &rhs) : request(rhs.request), server(rhs.server)
+Client::Client(const Client &rhs) : server(rhs.server), request(rhs.request)
 {
 	if (this != &rhs)
 	{
-        
 		_client_address = rhs._client_address;
 		_client_fd = rhs._client_fd;
 		server = rhs.server;

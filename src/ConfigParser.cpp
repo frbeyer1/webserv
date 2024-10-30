@@ -210,9 +210,20 @@ static void handleErrorPage(std::string parameter, Server &server)
                 exit(EXIT_FAILURE);
             }
         }
-        page_path.push_back(parameter[i]);
+        else
+        {
+            if (i == 4 && parameter[i] != '/')
+            {
+                Logger::log(RED, ERROR, "Config file misconfigured: error_page directive: missing '/' infront of path");
+                exit(EXIT_FAILURE);
+            }
+            page_path.push_back(parameter[i]);
+        }
     }
-    page_path = server.getRoot() + page_path;
+    std::cout << "Before: " << page_path << std::endl;
+    page_path = "/" + server.getRoot() + page_path;
+    std::cout << "After: " << page_path << std::endl;
+
     if (stat(page_path.c_str(), &buf) != 0 || S_ISREG(buf.st_mode) == 0)
     {
         Logger::log(RED, ERROR, "Config file misconfigured: error_page directive: error page path invalid");
@@ -261,12 +272,14 @@ void handleAllowedMethods(std::string parameter, location_t &location)
 
 static void handleRedirection(std::string parameter, location_t &location)
 {
-
+    (void)parameter;
+    (void)location;
 }
 
 static void handleAlias(std::string parameter, location_t &location)
 {
-
+    (void)parameter;
+    (void)location;
 }
 
 static void handleAutoIndex(std::string parameter, location_t &location)
@@ -284,7 +297,8 @@ static void handleAutoIndex(std::string parameter, location_t &location)
 
 static void handleIndexLocation(std::string parameter, location_t &location)
 {
-
+    (void)parameter;
+    (void)location;
 }
 
 static void handleIndex(std::string parameter, Server &server)
@@ -307,12 +321,14 @@ static void handleIndex(std::string parameter, Server &server)
 
 static void handleUpload(std::string parameter, location_t &location)
 {
-
+    (void)parameter;
+    (void)location;
 }
 
 static void handleCgi(std::string parameter, location_t &location)
 {
-
+    (void)parameter;
+    (void)location;
 }
 
 // ======   Private member functions   ======= //
@@ -327,13 +343,17 @@ void    ConfigParser::_readConfig(std::string config)
 
     if (file.fail())
     {
-        Logger::log(RED, ERROR, (std::ostringstream() << "Unable to open file: " << config).str());
+        std::ostringstream oss;
+        oss << "Unable to open file: " << config;
+        Logger::log(RED, ERROR, oss.str());
         exit(EXIT_FAILURE);
     }
     buffer << file.rdbuf();
     file.close();
     _content = buffer.str();
-    Logger::log(GREY, DEBUG, (std::ostringstream() << "Finished with reading file: " << config).str());
+    std::ostringstream oss;
+    oss << "Finished with reading file: " << config;
+    Logger::log(GREY, DEBUG, oss.str());
 }
 
 /*
@@ -372,7 +392,7 @@ void    ConfigParser::_findNextServerBlock()
     for (; _i < _content.length(); _i++)
     {
         _skipWhiteSpaces();
-        if (_content.compare(_i, 6, "server") == 0 | _content.compare(_i, 6, "Server") == 0)
+        if (_content.compare(_i, 6, "server") == 0 || _content.compare(_i, 6, "Server") == 0)
         {
             _i += 6;
             _skipWhiteSpaces();
@@ -497,7 +517,8 @@ void    ConfigParser::_getLocation(Server &server)
     std::string parameter;
     std::string path;
 
-    std::memset(&location, 0, sizeof(location));
+    std::memset(&location.allowed_methods, 0, sizeof(allowed_methods_t));
+    std::memset(&location.autoindex, 0, sizeof(bool));
     path = _getLocationPath();
     _skipWhiteSpaces();
     if (_content[_i] != '{')

@@ -12,9 +12,9 @@ private:
     time_t              _last_msg_time;
 
 public:
-    HttpRequest         request;
     Server              server;
-
+    HttpRequest         request;
+    
 // Default Constructor
     Client();
 
