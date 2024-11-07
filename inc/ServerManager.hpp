@@ -15,7 +15,7 @@ private:
     std::map<int, Client>     _client_map;
 
 // Private member functions
-    void    _acceptNewConnection(int fd, int epoll_fd);
+    void    _acceptNewConnection(int fd);
     void    _closeConnection(int fd);
     void    _checkTimeout();
     void    _readRequest(int fd);

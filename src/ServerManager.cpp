@@ -17,7 +17,7 @@ adds the add_fd to the epoll instance
 static void addToEpollInstance(int epoll_fd, int add_fd)
 {
     struct epoll_event event;
-    event.events = EPOLLIN | EPOLLOUT; 
+    event.events = EPOLLIN; 
     event.data.fd = add_fd;
     if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, add_fd, &event) == -1)
     {
@@ -49,7 +49,7 @@ static  bool    checkDuplicates(std::vector<Server> &servers)
 /*
 accepts new connection and puts the new client into the client_map and epoll instance
 */
-void    ServerManager::_acceptNewConnection(int server_fd, int epoll_fd)
+void    ServerManager::_acceptNewConnection(int server_fd)
 {
     if (_server_map.size() > MAX_CONNECTIONS)
     {
@@ -67,7 +67,7 @@ void    ServerManager::_acceptNewConnection(int server_fd, int epoll_fd)
     if (_client_map.count(client_fd) > 0)
         _client_map.erase(client_fd);
     _client_map.insert(std::make_pair(client_fd, client));
-    addToEpollInstance(epoll_fd, client_fd);
+    addToEpollInstance(_epoll_fd, client_fd);
     std::ostringstream oss;
     oss << "Accpted new Connection from " << sockaddrToIpString(client.getClientAddress()) << ", on fd " << client_fd;
     Logger::log(WHITE, INFO, oss.str());
@@ -86,7 +86,7 @@ void    ServerManager::_closeConnection(int fd)
     close(fd);
     _client_map.erase(fd);
     std::ostringstream oss;
-    oss  << "closed Connection " << fd;
+    oss  << "Closed Connection " << fd;
     Logger::log(WHITE, INFO, oss.str());
 }
 
@@ -116,16 +116,14 @@ void    ServerManager::_readRequest(int fd)
     int     bytes_read;
 
     bytes_read = read(fd, buffer, READ_SIZE);
-    if (bytes_read == 0)
-    {
-        _closeConnection(fd);
-        return ;
-    }
-    else if (bytes_read < 0)
+    if (bytes_read < 0)
     {
         std::ostringstream oss;
         oss << "Error: read error on fd " << fd;
         Logger::log(RED, ERROR, oss.str());
+    }
+    if (bytes_read <= 0)
+    {
         _closeConnection(fd);
         return ;
     }
@@ -141,9 +139,7 @@ void    ServerManager::_readRequest(int fd)
     // clear http request object
 }
 
-/*
 
-*/
 void    ServerManager::_sendResponse(int fd)
 {
     // send response
@@ -191,7 +187,7 @@ void    ServerManager::boot()
 {
     Logger::log(WHITE, INFO, "Booting Servers ...");
     // creates epoll instance
-    int _epoll_fd = epoll_create(1);
+    _epoll_fd = epoll_create(1);
     if (_epoll_fd == -1)
     {
         Logger::log(RED, ERROR, "creating epoll instace failed");
@@ -206,7 +202,7 @@ void    ServerManager::boot()
     struct epoll_event event_list[MAX_EPOLL_EVENTS];
     while (true)
     {
-        int num_events = epoll_wait(_epoll_fd, event_list, MAX_EPOLL_EVENTS, -1);
+        int num_events = epoll_wait(_epoll_fd, event_list, MAX_EPOLL_EVENTS, 10000);
         if (num_events == -1)
         {
             Logger::log(RED, ERROR, "waiting for event on the epoll instance failed");
@@ -217,7 +213,7 @@ void    ServerManager::boot()
             int fd = event_list[i].data.fd;
             
             if (_server_map.count(fd))
-                _acceptNewConnection(fd, _epoll_fd);
+                _acceptNewConnection(fd);
             else if (_client_map.count(fd) && event_list[i].events & EPOLLIN)
                 _readRequest(fd);
             else if (_client_map.count(fd) && event_list[i].events & EPOLLOUT)

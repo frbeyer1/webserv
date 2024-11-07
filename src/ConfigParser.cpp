@@ -62,6 +62,11 @@ static void handleRoot(std::string parameter, Server &server)
 {
     struct stat buf;
 
+    if (parameter[parameter.size() - 1] != '/')
+    {
+        Logger::log(RED, ERROR, "Error: config file misconfigured: root directive: missing '/' at end");
+        exit(EXIT_FAILURE);
+    }
     if (stat(parameter.c_str(), &buf) != 0)
     {
         Logger::log(RED, ERROR, "Error: Config file misconfigured: root directive: path invalid");
@@ -282,10 +287,12 @@ void handleAllowedMethods(std::string parameter, location_t &location)
     }
 }
 
+/*
+sets the redirection string of the location
+*/
 static void handleRedirection(std::string parameter, location_t &location)
 {
-    (void)parameter;
-    (void)location;
+    location.redirection = parameter;
 }
 
 static void handleAlias(std::string parameter, location_t &location)
@@ -294,6 +301,10 @@ static void handleAlias(std::string parameter, location_t &location)
     (void)location;
 }
 
+/*
+Checks the autoindex parameter:
+ - either "on" orr "off"
+*/
 static void handleAutoIndex(std::string parameter, location_t &location)
 {
     if (parameter == "off")
@@ -307,12 +318,34 @@ static void handleAutoIndex(std::string parameter, location_t &location)
     }
 }
 
-static void handleIndexLocation(std::string parameter, location_t &location)
+/*
+Checks the index parameter inside an location:
+ - is the file there? (dependent on root)
+ - and does it has read rights?
+*/
+static void handleIndexLocation(std::string parameter, location_t &location, Server &server)
 {
-    (void)parameter;
-    (void)location;
+    std::string index = server.getRoot() + parameter;
+    struct stat buf;
+
+    if (stat(index.c_str(), &buf) != 0 || S_ISREG(buf.st_mode) == 0)
+    {
+        Logger::log(RED, ERROR, "Config file misconfigured: index directive: index file is invalid");
+        exit(EXIT_FAILURE);
+    }
+    if (access(index.c_str(), R_OK))
+    {
+        Logger::log(RED, ERROR, "Config file misconfigured: index directive: index file has no read rights");
+        exit(EXIT_FAILURE);
+    }
+    location.index = index;
 }
 
+/*
+Checks the index parameter:
+ - is the file there? (dependent on root)
+ - and does it has read rights?
+*/
 static void handleIndex(std::string parameter, Server &server)
 {
     std::string index = server.getRoot() + parameter;
@@ -331,10 +364,35 @@ static void handleIndex(std::string parameter, Server &server)
     server.setIndex(index);
 }
 
-static void handleUpload(std::string parameter, location_t &location)
+/*
+Checks the upload directive:
+ - checks if file is there and an directory
+ - checks for write rights for the directory 
+*/
+static void handleUpload(std::string parameter, location_t &location, Server &server)
 {
-    (void)parameter;
-    (void)location;
+    std::string upload_path = server.getRoot() + parameter;
+    struct stat buf;
+
+    if (stat(upload_path.c_str(), &buf) != 0)
+    {
+        Logger::log(RED, ERROR, "Error: Config file misconfigured: upload directive: path invalid");
+        exit(EXIT_FAILURE);
+    }
+    if (S_ISDIR(buf.st_mode))
+    { 
+        if (access(upload_path.c_str(), W_OK))
+        {
+            Logger::log(RED, ERROR, "Config file misconfigured: upload directive: directory has no write rights");
+            exit(EXIT_FAILURE);
+        }
+        location.upload = upload_path;
+    }  
+    else
+    {
+        Logger::log(RED, ERROR, "Config file misconfigured: upload directive: is no directory");
+        exit(EXIT_FAILURE);
+    }
 }
 
 static void handleCgi(std::string parameter, location_t &location)
@@ -499,7 +557,7 @@ Directive ConfigParser::_getDirectiveType()
 }
 
 /*
-checks and returns the path for the location
+returns the path for the location
 */
 std::string    ConfigParser::_getLocationPath()
 {
@@ -512,9 +570,6 @@ std::string    ConfigParser::_getLocationPath()
         else
             path.push_back(_content[_i]);
     }
-    // in progress ...
-
-
     return (path);
 }
 
@@ -530,7 +585,7 @@ void    ConfigParser::_getLocation(Server &server)
 
     std::memset(&location.allowed_methods, 0, sizeof(allowed_methods_t));
     std::memset(&location.autoindex, 0, sizeof(bool));
-    path = _getLocationPath();
+    path = server.getRoot() + _getLocationPath();
     _skipWhiteSpaces();
     if (_content[_i] != '{')
     {
@@ -561,10 +616,10 @@ void    ConfigParser::_getLocation(Server &server)
             handleAutoIndex(parameter, location);
             break;
         case INDEX:
-            handleIndexLocation(parameter, location);
+            handleIndexLocation(parameter, location, server);
             break;
         case UPLOAD:
-            handleUpload(parameter, location);
+            handleUpload(parameter, location, server);
             break;
         case CGI:
             handleCgi(parameter, location);

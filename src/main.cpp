@@ -25,6 +25,8 @@ int main(int argc, char **argv)
 
 // ==============   TO DO   ================== //
 
+// check DEFAULT_VALUES in server ???
+
 // HttpRequestParser:
 // -    parse the chunk extensions and trailer section or keep ignoring ???
 // -    do Percent decoding ???
@@ -37,9 +39,12 @@ int main(int argc, char **argv)
 // config parser:
 // -    what if location directive is empty
 // -    max config lenght???
+// -    handle alias cgi
 
 // other stuff:
 // -    init default error pages
 // -    not blockin for epoll_wait
+
+// - _epoll_fd is changeing randomly in function calls !!!!!!!!!!!!!!!
 
 // use read or recv and write or send ???
