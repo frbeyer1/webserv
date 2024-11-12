@@ -18,8 +18,8 @@ private:
     void    _acceptNewConnection(int fd);
     void    _closeConnection(int fd);
     void    _checkTimeout();
-    void    _readRequest(int fd);
-    void    _sendResponse(int fd);
+    void    _readRequest(int fd, Client &client);
+    void    _sendResponse(int fd, Client &client);
 
 public:
 // Constructor

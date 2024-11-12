@@ -14,7 +14,8 @@ private:
 public:
     Server              server;
     HttpRequest         request;
-    
+    Response            response;
+
 // Default Constructor
     Client();
 

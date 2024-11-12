@@ -20,7 +20,6 @@ Server::Server()
     _root = DEFAULT_ROOT;
     _client_max_body_size = DEFAULT_CLIENT_MAX_BODY_SIZE;
     _index = DEFAULT_INDEX;
-    // _error_pages = ;
 }
 
 // ============   Deconstructor   ============ //
@@ -173,6 +172,7 @@ void    Server::setup()
         Logger::log(RED, ERROR, "Could not bind socket");
         exit(EXIT_FAILURE);
     }
+    setNonBlocking(_server_fd);
 }
 
 /*

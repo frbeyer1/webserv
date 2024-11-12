@@ -3,14 +3,24 @@
 // =============   Constructor   ============= //
 Response::Response()
 {
-
+    // _response_size = 0;
 }
 
 // ============   Deconstructor   ============ //
 Response::~Response()
 {
-
 }
+
+// ==============   Getters   ================ //
+// std::string Resonse::getResponseStr()
+// {
+//      return (_responst_str.str());
+// }
+
+// size_t Response::getResponseSize()
+// {
+//      return (_response_size);
+// }
 
 // ================   Utils   ================ //
 /*
@@ -68,4 +78,13 @@ std::string Response::_buildDefaultErrorPage(int error_code)
     oss << "</h1><p>" << (error_code);
     oss << ".</p></center></body></html>";
     return (oss.str());
+}
+
+// ==========   Member functions   =========== //
+/*
+builds the Response
+*/
+void    Response::build(HttpRequest &request)
+{
+    (void)request;
 }

@@ -110,7 +110,7 @@ void    ServerManager::_checkTimeout()
 /*
 reads READ_SIZE amount of octets of the fd and feeds it to the HttpRequest parser
 */
-void    ServerManager::_readRequest(int fd)
+void    ServerManager::_readRequest(int fd, Client &client)
 {
     uint8_t buffer[READ_SIZE];
     int     bytes_read;
@@ -129,21 +129,25 @@ void    ServerManager::_readRequest(int fd)
     }
     else
     {
-        Client &client = _client_map[fd];
-        client.request.parse(buffer, bytes_read);
         client.setLastMsgTime(time(NULL));
+        client.request.parse(buffer, bytes_read);
         std::memset(buffer, 0, sizeof(buffer));
+        // if (client.request.getParsingState() == Parsing_Finished)
+        // {
+        //     // client.response.build()
+        //     client.request.clear();
+        // }
     }
-
-    // check for parsing finished -> build response
-    // clear http request object
 }
 
-
-void    ServerManager::_sendResponse(int fd)
+/*
+sends the already build response
+*/
+void    ServerManager::_sendResponse(int fd, Client &client)
 {
-    // send response
+    // write(fd, client.response.getResponseStr().c_str(), client.response.getResponseSize());
     (void)fd;
+    (void)client;
 }
 
 // ==========   Member functions   =========== //
@@ -215,9 +219,9 @@ void    ServerManager::boot()
             if (_server_map.count(fd))
                 _acceptNewConnection(fd);
             else if (_client_map.count(fd) && event_list[i].events & EPOLLIN)
-                _readRequest(fd);
+                _readRequest(fd, _client_map[fd]);
             else if (_client_map.count(fd) && event_list[i].events & EPOLLOUT)
-                _sendResponse(fd);
+                _sendResponse(fd, _client_map[fd]);
             else
                 close(fd);
         }

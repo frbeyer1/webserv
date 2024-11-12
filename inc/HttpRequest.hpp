@@ -79,7 +79,7 @@ public:
 // Constructor
     HttpRequest();
 
-// Copy COnstructor
+// Copy Constructor
     HttpRequest(const HttpRequest &rhs);
 
 // Deconstructor
