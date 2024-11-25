@@ -5,8 +5,7 @@
 class Response
 {
 private:
-    // std::stringstream   _response_str;
-    // size_t              _response_size;
+    std::string   _response_str;
 
 // Private member functions
     std::string _buildDefaultErrorPage(int error_code);
@@ -22,7 +21,6 @@ public:
     void    build(HttpRequest &request);
 
 // Getter
-    // std::string getResponseStr();
-    // size_t   getResponseSize();
+    std::string &getResponseStr();
 
 };

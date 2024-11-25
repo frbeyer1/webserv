@@ -3,7 +3,6 @@
 // =============   Constructor   ============= //
 Response::Response()
 {
-    // _response_size = 0;
 }
 
 // ============   Deconstructor   ============ //
@@ -12,15 +11,10 @@ Response::~Response()
 }
 
 // ==============   Getters   ================ //
-// std::string Resonse::getResponseStr()
-// {
-//      return (_responst_str.str());
-// }
-
-// size_t Response::getResponseSize()
-// {
-//      return (_response_size);
-// }
+std::string &Response::getResponseStr()
+{
+    return (_response_str);
+}
 
 // ================   Utils   ================ //
 /*
@@ -87,4 +81,5 @@ builds the Response
 void    Response::build(HttpRequest &request)
 {
     (void)request;
+    _response_str = "HTTP/1.1 200 OK\n\rContent-Type: text/plain\n\rContent-Length: 13\n\r\n\rHello, World!\n\r";
 }

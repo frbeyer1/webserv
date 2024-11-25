@@ -17,7 +17,7 @@ adds the add_fd to the epoll instance
 static void addToEpollInstance(int epoll_fd, int add_fd)
 {
     struct epoll_event event;
-    event.events = EPOLLIN; 
+    event.events = EPOLLIN | EPOLLOUT; 
     event.data.fd = add_fd;
     if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, add_fd, &event) == -1)
     {
@@ -132,11 +132,11 @@ void    ServerManager::_readRequest(int fd, Client &client)
         client.setLastMsgTime(time(NULL));
         client.request.parse(buffer, bytes_read);
         std::memset(buffer, 0, sizeof(buffer));
-        // if (client.request.getParsingState() == Parsing_Finished)
-        // {
-        //     // client.response.build()
-        //     client.request.clear();
-        // }
+        if (client.request.getParsingState() == Parsing_Finished)
+        {
+            client.response.build(client.request);
+            client.request.clear();
+        }
     }
 }
 
@@ -145,9 +145,10 @@ sends the already build response
 */
 void    ServerManager::_sendResponse(int fd, Client &client)
 {
-    // write(fd, client.response.getResponseStr().c_str(), client.response.getResponseSize());
-    (void)fd;
-    (void)client;
+    std::string &respons_str = client.response.getResponseStr();
+    std::cout << respons_str << std::endl;
+    write(fd, respons_str.c_str(), respons_str.size());
+    exit(1);
 }
 
 // ==========   Member functions   =========== //
@@ -206,7 +207,7 @@ void    ServerManager::boot()
     struct epoll_event event_list[MAX_EPOLL_EVENTS];
     while (true)
     {
-        int num_events = epoll_wait(_epoll_fd, event_list, MAX_EPOLL_EVENTS, 10000);
+        int num_events = epoll_wait(_epoll_fd, event_list, MAX_EPOLL_EVENTS, -1);
         if (num_events == -1)
         {
             Logger::log(RED, ERROR, "waiting for event on the epoll instance failed");
