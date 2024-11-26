@@ -3,23 +3,21 @@
 // =============   Constructor   ============= //
 Response::Response()
 {
+    _file = "";
+    _content = "";
+    _contentType = "";
+    _contentLenght = 0;
+    _code = 0;
 }
 
 // ============   Deconstructor   ============ //
-Response::~Response()
-{
-}
-
-// ==============   Getters   ================ //
-std::string &Response::getResponseStr()
-{
-    return (_response_str);
-}
+Response::~Response(){}
 
 // ================   Utils   ================ //
 /*
 return an description of the error_code as a string
 */
+
 static  std::string lookupErrorMessage(int error_code)
 {
     switch (error_code) {
@@ -65,7 +63,7 @@ builds an Default error page and returns it as string
 */
 std::string Response::_buildDefaultErrorPage(int error_code)
 {
-    std::ostringstream  oss;
+    std::ostringstream  oss; //_file
 
     oss << "<!DOCTYPE html><html><head><title>Error</title></head><body><center><h1>Error ";
     oss << lookupErrorMessage(error_code); 
@@ -73,13 +71,59 @@ std::string Response::_buildDefaultErrorPage(int error_code)
     oss << ".</p></center></body></html>";
     return (oss.str());
 }
-
-// ==========   Member functions   =========== //
-/*
-builds the Response
-*/
-void    Response::build(HttpRequest &request)
+// GET
+std::string Response::_GETResponse()
 {
-    (void)request;
-    _response_str = "HTTP/1.1 200 OK\n\rContent-Type: text/plain\n\rContent-Length: 13\n\r\n\rHello, World!\n\r";
+    std::ostringstream  oss; //_file
+
+    // check max bodysize of client
+    // check if get is allowed??
+    oss << "HTTP?1.1 "<< _code <<" OK\r\n";
+    oss << "Content-Type: "<< _contentType << "\r\n";
+    oss << "Content-Lenght: "<< _contentLenght << "\r\n";
+    oss << "\r\n";
+    // oss << _content;
+    return (oss.str());
+}
+
+// std::string Response::_buildContent(){
+//     getCode();
+//     _buildDefaultErrorPage(_code);
+//     if
+// };
+// POST
+// DELETE
+
+// ======   Public member functions   ======= //
+size_t Response::getCode(){
+    return(200);
+}
+
+std::string Response::getType(){
+    return("test/html");
+}
+void    Response::build(HttpRequest &request){
+
+    // getTargetFile();
+    _code = getCode();
+    _contentType = getType();
+
+    if(_code != 200)
+        _buildDefaultErrorPage(_code);
+
+    switch (request.getMethod())
+    {
+    case GET:
+        _response_str = _GETResponse();
+        //  _GETResponse(_file);
+        break;
+    
+    default:
+        break;
+    }
+};
+
+std::string &Response::getResponseStr()
+{
+    return (_response_str);
 }

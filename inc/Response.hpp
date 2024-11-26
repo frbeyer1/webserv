@@ -4,23 +4,28 @@
 
 class Response
 {
-private:
-    std::string   _response_str;
+    private:
+        std::string _file;
 
-// Private member functions
-    std::string _buildDefaultErrorPage(int error_code);
+        std::string _response_str;
+        std::string _content;
+        std::string _contentType;
+        size_t      _contentLenght;
+        size_t      _code;
 
-public:
-// Constructor
-    Response();
-
-// Deconstructor
-    ~Response();
-
-// Member functions
-    void    build(HttpRequest &request);
-
-// Getter
-    std::string &getResponseStr();
-
+        Server      _server; // ??
+        // MIME TYPE??
+        std::string _buildDefaultErrorPage(int error_code);
+        std::string _GETResponse();
+        // POST
+        // DELETE
+        // std::string _buildContent();
+    public:
+        Response();
+        ~Response();
+        void    build(HttpRequest &request);
+        std::string getTargetFile();
+        size_t      getCode();
+        std::string getType();
+        std::string &getResponseStr();
 };
