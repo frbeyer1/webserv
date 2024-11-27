@@ -3,9 +3,6 @@
 // =============   Constructor   ============= //
 Response::Response()
 {
-    _file = "";
-    _content = "";
-    _contentType = "";
     _contentLenght = 0;
     _code = 0;
 }
@@ -15,32 +12,6 @@ Response::~Response(){}
 
 // ================   Utils   ================ //
 
-void Response::checkContent(){
-    std::string tmp;
-    std::ifstream file(_contentPath.c_str());//-----------------
-
-    if (!file.is_open()) {
-        std::cerr << "Error: Could not open the file." << std::endl;
-        return;
-    }
-    while (std::getline(file, tmp)) {
-        _content.append(tmp);
-        _content.append("\n");
-    }
-    file.close();
-    _contentLenght = _content.length();
-}
-
-std::string Response::getTimeAndDate(){
-    std::ostringstream  oss;
-    time_t now = time(0);
-    tm* localTime = localtime(&now);
-    tzset();
-    char buffer[80];
-    strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S", localTime);
-    oss << std::string(buffer) << " " << tzname[0] << std::endl;
-    return oss.str();
-}
 
 static  std::string lookupErrorMessage(int error_code)
 {
@@ -79,6 +50,42 @@ static  std::string lookupErrorMessage(int error_code)
     default: return "Undefined";
 
     }
+}
+
+void Response::checkContent(){
+    std::string tmp;
+    std::ifstream file(_contentPath.c_str());//-----------------
+
+    if (!file.is_open()) {
+        std::cerr << "Error: Could not open the file." << std::endl;
+        return;
+    }
+    while (std::getline(file, tmp)) {
+        _content.append(tmp);
+        _content.append("\n");
+    }
+    file.close();
+    _contentLenght = _content.length();
+}
+
+std::string Response::getTimeAndDate(){
+    std::ostringstream  oss;
+    time_t now = time(0);
+    tm* localTime = localtime(&now);
+    tzset();
+    char buffer[80];
+    strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S", localTime);
+    oss << std::string(buffer) << " " << tzname[0] << std::endl;
+    return oss.str();
+}
+
+std::string Response::getType(){
+    return("text/html");//--
+}
+
+std::string &Response::getResponseStr()
+{
+    return (_response_str);
 }
 
 // ======   Private member functions   ======= //
@@ -150,10 +157,7 @@ std::string Response::_DELETEmethod()
 
 // ======   Public member functions   ======= //
 
-std::string Response::getType(){
-    return("text/html");//--
-}
-void    Response::build(HttpRequest &request){
+void    Response::buildResponse(HttpRequest &request){
 
     _code = request.getError();//<- valid?
     _contentType = getType();
@@ -175,8 +179,3 @@ void    Response::build(HttpRequest &request){
             break;
     };
 };
-
-std::string &Response::getResponseStr()
-{
-    return (_response_str);
-}

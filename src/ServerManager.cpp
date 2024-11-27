@@ -135,7 +135,7 @@ void    ServerManager::_readRequest(int fd, Client &client)
             std::cout <<  "readrequest" << std::endl;
         if (client.request.getParsingState() == Parsing_Finished)
         {
-            client.response.build(client.request);
+            client.response.buildResponse(client.request);
             client.request.clear();
         }
     }
