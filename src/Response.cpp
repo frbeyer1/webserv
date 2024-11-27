@@ -52,13 +52,13 @@ static  std::string lookupErrorMessage(int error_code)
     }
 }
 
-void Response::checkContent(){
+size_t Response::checkContent(){
     std::string tmp;
     std::ifstream file(_contentPath.c_str());//-----------------
 
     if (!file.is_open()) {
         std::cerr << "Error: Could not open the file." << std::endl;
-        return;
+        return (404);
     }
     while (std::getline(file, tmp)) {
         _content.append(tmp);
@@ -66,6 +66,7 @@ void Response::checkContent(){
     }
     file.close();
     _contentLenght = _content.length();
+    return(200);
 }
 
 std::string Response::getTimeAndDate(){
@@ -79,13 +80,27 @@ std::string Response::getTimeAndDate(){
     return oss.str();
 }
 
-std::string Response::getType(){
-    return("text/html");//--
+std::string Response::getType(HttpRequest &request){
+    for (std::map<std::string, std::string>::const_iterator it = request.getHeaders().begin(); it != request.getHeaders().end(); it++){
+        // std::cout << it->first << ":" << it->second << std::endl;
+        if(it->first == "Accept")
+        {
+            size_t i = it->second.find(",");
+            std::string type = it->second.substr(0,i);//if type invalid or missing
+            // std::cout << "type: " << type << std::endl;
+            return(type);
+        }
+    }
+    return(DEFAULT_type);//--
 }
 
 std::string &Response::getResponseStr()
 {
     return (_response_str);
+}
+
+size_t Response::getCode(){
+    return (_code);
 }
 
 // ======   Private member functions   ======= //
@@ -103,15 +118,25 @@ std::string Response::_buildDefaultErrorPage(int error_code)
 }
 
 // GET
-
-std::string Response::_GETmethod()
+std::string Response::_GETmethod(HttpRequest &request)
 {
     std::ostringstream  oss;
 
-    // allowed methods -> in server class
+    // allowed methods -> check in cgi
     // cgi
-    _contentPath = "docs/index.html";//-------------------
-    checkContent();
+    std::cout << request.getPath() << std::endl;
+    if(request.getPath() == "/")
+    {
+        //check if index exits if not autoindex(if on true) return _code
+        //_contentPath = configparser-location.root + configparser-location.index
+        _contentPath = "docs/index.html";
+    }
+    else
+        //_contentPath = configparser-location.root + request.getPath()
+        _contentPath = "docs/" + request.getPath();//check if exists //handle paga->page->page... return _code
+    _code = checkContent();
+    if(_code != 200)
+        return(_buildDefaultErrorPage(_code));
     oss << "HTTP/1.1 "<< _code <<" OK\r\n";
     oss << "Content-Type: "<< _contentType << "\r\n";
     oss << "Content-Lenght: "<< _contentLenght << "\r\n";
@@ -122,12 +147,19 @@ std::string Response::_GETmethod()
 }
 
 // POST
-std::string Response::_POSTmethod()
+std::string Response::_POSTmethod(HttpRequest &request)
 {
     std::ostringstream  oss;
 
-    // allowed methods -> in server class
+    // allowed methods -> check in cgi
     // cgi
+    // check if upload location exitsts and method allowed, <-defined in config
+    std::cout << request.getPath() << std::endl;
+    // check if file to upload to exists
+    // if file upload -> move to location 
+    // if other create new file in location or if exist put data depending of type in there
+    // how does it work when user wants access to file again
+    // messages -> "successfull upload, saving, etc..."
     _contentPath = "docs/index.html";//-----------------
     checkContent();
     oss << "HTTP/1.1 "<< _code <<" OK\r\n";
@@ -143,7 +175,7 @@ std::string Response::_DELETEmethod()
 {
     std::ostringstream  oss;
 
-    // allowed methods -> in server class
+    // allowed methods
     // cgi
     _contentPath = "docs/index.html";//-----------------
     checkContent();
@@ -160,16 +192,16 @@ std::string Response::_DELETEmethod()
 void    Response::buildResponse(HttpRequest &request){
 
     _code = request.getError();//<- valid?
-    _contentType = getType();
+    _contentType = getType(request);
     if(_code != 200)
         _response_str = _buildDefaultErrorPage(_code);
     switch (request.getMethod())
     {
         case GET:
-            _response_str = _GETmethod();
+            _response_str = _GETmethod(request);
             break;
         case POST:
-            _response_str = _POSTmethod();
+            _response_str = _POSTmethod(request);
             break;
         case DELETE:
             _response_str = _DELETEmethod();
