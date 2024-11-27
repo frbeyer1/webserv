@@ -14,9 +14,33 @@ Response::Response()
 Response::~Response(){}
 
 // ================   Utils   ================ //
-/*
-return an description of the error_code as a string
-*/
+
+void Response::checkContent(){
+    std::string tmp;
+    std::ifstream file("docs/index.html");//-----------------
+
+    if (!file.is_open()) {
+        std::cerr << "Error: Could not open the file." << std::endl;
+        return;
+    }
+    while (std::getline(file, tmp)) {
+        _content.append(tmp);
+        _content.append("\n");
+    }
+    file.close();
+    _contentLenght = _content.length();
+}
+
+std::string Response::getTimeAndDate(){
+    std::ostringstream  oss;
+    time_t now = time(0);
+    tm* localTime = localtime(&now);
+    tzset();
+    char buffer[80];
+    strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S", localTime);
+    oss << std::string(buffer) << tzname[0] << std::endl;
+    return oss.str();
+}
 
 static  std::string lookupErrorMessage(int error_code)
 {
@@ -58,12 +82,11 @@ static  std::string lookupErrorMessage(int error_code)
 }
 
 // ======   Private member functions   ======= //
-/*
-builds an Default error page and returns it as string
-*/
+
+// ERROR PAGE
 std::string Response::_buildDefaultErrorPage(int error_code)
 {
-    std::ostringstream  oss; //_file
+    std::ostringstream  oss;
 
     oss << "<!DOCTYPE html><html><head><title>Error</title></head><body><center><h1>Error ";
     oss << lookupErrorMessage(error_code); 
@@ -71,56 +94,86 @@ std::string Response::_buildDefaultErrorPage(int error_code)
     oss << ".</p></center></body></html>";
     return (oss.str());
 }
-// GET
-std::string Response::_GETResponse()
-{
-    std::ostringstream  oss; //_file
 
-    // check max bodysize of client
-    // check if get is allowed??
+// GET
+
+std::string Response::_GETmethod()
+{
+    std::ostringstream  oss;
+
+    // allowed methods -> in server class
+    // cgi
+    _contentPath = "docs/index.html";//-------------------
+    checkContent();
+    oss << "HTTP/1.1 "<< _code <<" OK\r\n";
+    oss << "Content-Type: "<< _contentType << "\r\n";
+    oss << "Content-Lenght: "<< _contentLenght << "\r\n";
+    oss << "Date: "<< getTimeAndDate() << "\r\n";
+    oss << "\r\n";
+    oss << _content;
+    return (oss.str());
+}
+
+// POST
+std::string Response::_POSTmethod()
+{
+    std::ostringstream  oss;
+
+    // allowed methods -> in server class
+    // cgi
+    _contentPath = "docs/index.html";//-----------------
+    checkContent();
     oss << "HTTP?1.1 "<< _code <<" OK\r\n";
     oss << "Content-Type: "<< _contentType << "\r\n";
     oss << "Content-Lenght: "<< _contentLenght << "\r\n";
     oss << "\r\n";
-    // oss << _content;
+    oss << _content;
     return (oss.str());
 }
 
-// std::string Response::_buildContent(){
-//     getCode();
-//     _buildDefaultErrorPage(_code);
-//     if
-// };
-// POST
 // DELETE
+std::string Response::_DELETEmethod()
+{
+    std::ostringstream  oss;
 
-// ======   Public member functions   ======= //
-size_t Response::getCode(){
-    return(200);
+    // allowed methods -> in server class
+    // cgi
+    _contentPath = "docs/index.html";//-----------------
+    checkContent();
+    oss << "HTTP?1.1 "<< _code <<" OK\r\n";
+    oss << "Content-Type: "<< _contentType << "\r\n";
+    oss << "Content-Lenght: "<< _contentLenght << "\r\n";
+    oss << "\r\n";
+    oss << _content;
+    return (oss.str());
 }
 
+// ======   Public member functions   ======= //
+
 std::string Response::getType(){
-    return("test/html");
+    return("text/html");//--
 }
 void    Response::build(HttpRequest &request){
 
-    // getTargetFile();
-    _code = getCode();
+    _code = request.getError();//<- valid?
     _contentType = getType();
-
     if(_code != 200)
-        _buildDefaultErrorPage(_code);
-
+        _response_str = _buildDefaultErrorPage(_code);
     switch (request.getMethod())
     {
-    case GET:
-        _response_str = _GETResponse();
-        //  _GETResponse(_file);
-        break;
-    
-    default:
-        break;
-    }
+        case GET:
+            _response_str = _GETmethod();
+            break;
+        case POST:
+            _response_str = _POSTmethod();
+            break;
+        case DELETE:
+            _response_str = _DELETEmethod();
+            break;
+        default:
+                std::cout << "No method" << std::endl;
+            break;
+    };
 };
 
 std::string &Response::getResponseStr()

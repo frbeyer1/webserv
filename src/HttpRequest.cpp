@@ -200,7 +200,7 @@ clears and resets all variables in the object
 void    HttpRequest::clear()
 {
     _state = Empty_Line;
-    _error = 0;
+    _error = 200;
     _method = NONE;
     _path = "";
     _query = "";
@@ -229,7 +229,7 @@ void    HttpRequest::parse(uint8_t *data, size_t size)
 {
     uint8_t ch;
 
-    if (_error)
+    if (_error != OK)
         return;
     for (size_t i = 0; i < size; i++) 
     {

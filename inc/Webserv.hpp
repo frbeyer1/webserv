@@ -32,6 +32,7 @@
 #define LOGGER_LOG_LVL                              ERROR
 
 /*   HTTP Error Codes   */
+#define OK                                          200
 #define BAD_REQUEST                                 400
 #define FORBIDDEN                                   403
 #define NOT_FOUND                                   404

@@ -6,7 +6,7 @@ class Response
 {
     private:
         std::string _file;
-
+        std::string _contentPath;
         std::string _response_str;
         std::string _content;
         std::string _contentType;
@@ -16,16 +16,19 @@ class Response
         Server      _server; // ??
         // MIME TYPE??
         std::string _buildDefaultErrorPage(int error_code);
-        std::string _GETResponse();
+        std::string _GETmethod();
+        std::string _POSTmethod();
+        std::string _DELETEmethod();
+        void checkContent();
         // POST
         // DELETE
         // std::string _buildContent();
     public:
         Response();
         ~Response();
-        void    build(HttpRequest &request);
+        void        build(HttpRequest &request);
         std::string getTargetFile();
-        size_t      getCode();
         std::string getType();
         std::string &getResponseStr();
+        std::string getTimeAndDate();
 };

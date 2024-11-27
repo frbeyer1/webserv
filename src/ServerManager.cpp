@@ -132,6 +132,7 @@ void    ServerManager::_readRequest(int fd, Client &client)
         client.setLastMsgTime(time(NULL));
         client.request.parse(buffer, bytes_read);
         std::memset(buffer, 0, sizeof(buffer));
+            std::cout <<  "readrequest" << std::endl;
         if (client.request.getParsingState() == Parsing_Finished)
         {
             client.response.build(client.request);
@@ -146,6 +147,7 @@ sends the already build response
 void    ServerManager::_sendResponse(int fd, Client &client)
 {
     std::string &respons_str = client.response.getResponseStr();
+    // getTargetFile();
     std::cout << respons_str << std::endl;
     write(fd, respons_str.c_str(), respons_str.size());
     exit(1);
