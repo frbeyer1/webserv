@@ -17,7 +17,7 @@ Response::~Response(){}
 
 void Response::checkContent(){
     std::string tmp;
-    std::ifstream file("docs/index.html");//-----------------
+    std::ifstream file(_contentPath.c_str());//-----------------
 
     if (!file.is_open()) {
         std::cerr << "Error: Could not open the file." << std::endl;
@@ -38,7 +38,7 @@ std::string Response::getTimeAndDate(){
     tzset();
     char buffer[80];
     strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S", localTime);
-    oss << std::string(buffer) << tzname[0] << std::endl;
+    oss << std::string(buffer) << " " << tzname[0] << std::endl;
     return oss.str();
 }
 
@@ -123,7 +123,7 @@ std::string Response::_POSTmethod()
     // cgi
     _contentPath = "docs/index.html";//-----------------
     checkContent();
-    oss << "HTTP?1.1 "<< _code <<" OK\r\n";
+    oss << "HTTP/1.1 "<< _code <<" OK\r\n";
     oss << "Content-Type: "<< _contentType << "\r\n";
     oss << "Content-Lenght: "<< _contentLenght << "\r\n";
     oss << "\r\n";
@@ -140,7 +140,7 @@ std::string Response::_DELETEmethod()
     // cgi
     _contentPath = "docs/index.html";//-----------------
     checkContent();
-    oss << "HTTP?1.1 "<< _code <<" OK\r\n";
+    oss << "HTTP/1.1 "<< _code <<" OK\r\n";
     oss << "Content-Type: "<< _contentType << "\r\n";
     oss << "Content-Lenght: "<< _contentLenght << "\r\n";
     oss << "\r\n";
