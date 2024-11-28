@@ -52,6 +52,56 @@ static  std::string lookupErrorMessage(int error_code)
     }
 }
 
+size_t Response::checkContent(){
+    std::string tmp;
+    std::ifstream file(_contentPath.c_str());//-----------------
+
+    if (!file.is_open()) {
+        std::cerr << "Error: Could not open the file." << std::endl;
+        return (404);
+    }
+    while (std::getline(file, tmp)) {
+        _content.append(tmp);
+    }
+    file.close();
+    _contentLength = _content.length();
+    return(200);
+}
+
+std::string Response::getTimeAndDate(){
+    std::ostringstream  oss;
+    time_t now = time(0);
+    tm* localTime = localtime(&now);
+    tzset();
+    char buffer[80];
+    strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S", localTime);
+    oss << std::string(buffer) << " " << tzname[0] << std::endl;
+    return oss.str();
+}
+
+// std::string Response::getType(HttpRequest &request){
+//     for (std::map<std::string, std::string>::const_iterator it = request.getHeaders().begin(); it != request.getHeaders().end(); it++){
+//         // std::cout << it->first << ":" << it->second << std::endl;
+//         if(it->first == "Accept")
+//         {
+//             size_t i = it->second.find(",");
+//             std::string type = it->second.substr(0,i);//if type invalid or missing.. return _code
+//             // std::cout << "type: " << type << std::endl;
+//             return(type);
+//         }
+//     }
+//     return(DEFAULT_type);//--
+// }
+
+std::string &Response::getResponseStr()
+{
+    return (_response_str);
+}
+
+size_t Response::getCode(){
+    return (_code);
+}
+
 static std::string getMimeType(const std::string& filename)
 {
     size_t dotPos = filename.find_last_of(".");
@@ -83,58 +133,6 @@ static std::string getMimeType(const std::string& filename)
     return "application/octet-stream";
 }
 
-size_t Response::checkContent(){
-    std::string tmp;
-    std::ifstream file(_contentPath.c_str(), std::ios::binary);//-----------------
-
-    if (!file.is_open()) {
-        std::cerr << "Error: Could not open the file." << std::endl;
-        return (404);
-    }
-    while (std::getline(file, tmp)) {
-        _content.append(tmp);
-        _content.append("\n");
-    }
-    file.close();
-    _contentLength = _content.length();
-    return(200);
-}
-
-std::string Response::getTimeAndDate(){
-    std::ostringstream  oss;
-    time_t now = time(0);
-    tm* localTime = localtime(&now);
-    tzset();
-    char buffer[80];
-    strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S", localTime);
-    oss << std::string(buffer) << " " << tzname[0] << std::endl;
-    return oss.str();
-}
-
-std::string Response::getType(HttpRequest &request)
-{
-    for (std::map<std::string, std::string>::const_iterator it = request.getHeaders().begin(); it != request.getHeaders().end(); it++){
-        // std::cout << it->first << ":" << it->second << std::endl;
-        if(it->first == "Accept")
-        {
-            size_t i = it->second.find(",");
-            std::string type = it->second.substr(0,i);//if type invalid or missing
-            // std::cout << "type: " << type << std::endl;
-            return(type);
-        }
-    }
-    return(DEFAULT_type);//--
-}
-
-std::string &Response::getResponseStr()
-{
-    return (_response_str);
-}
-
-size_t Response::getCode(){
-    return (_code);
-}
-
 // ======   Private member functions   ======= //
 
 // ERROR PAGE
@@ -150,45 +148,53 @@ std::string Response::_buildDefaultErrorPage(int error_code)
 }
 
 // GET
-std::string Response::_GETmethod(HttpRequest &request)
+std::string Response::_GETmethod(HttpRequest &request, Server &server)
 {
     std::ostringstream  oss;
 
-    // allowed methods -> check in cgi
-    // cgi
-    std::cout << request.getPath() << std::endl;
+    (void)server;
+    // std::cout << request.getPath() << std::endl;
     if(request.getPath() == "/")
     {
         //check if index exits if not autoindex(if on true) return _code
         //_contentPath = configparser-location.root + configparser-location.index
+        // if(server.getRoot())
         _contentPath = "docs/index.html";
+        std::cout << server.getRoot() << std::endl;
+        // std::cout << server. << std::endl;
     }
+    // else if(request.getPath().find("/cgi-bin") != std::string::npos)
+        // CgiHandler   cgi();
+        // size_t       i = request.getPath().find("/cgi-bin/");
+        // std::string  cgi_program = request.getPath().substr(i,npos);
+        // allowed methods -> check in cgi
     else
         //_contentPath = configparser-location.root + request.getPath()
         _contentPath = "docs/" + request.getPath();//check if exists //handle paga->page->page... return _code
-    _code = checkContent();
     _contentType = getMimeType(_contentPath);
+    _code = checkContent();
     if(_code != 200)
         return(_buildDefaultErrorPage(_code));
     oss << "HTTP/1.1 "<< _code <<" OK\r\n";
     oss << "Content-Type: "<< _contentType << "\r\n";
     oss << "Content-Length: "<< _contentLength << "\r\n";
-    oss << "Date: "<< getTimeAndDate() << "\r\n";
+    oss << "Date: "<< getTimeAndDate();
     oss << "\r\n";
     oss << _content;
+    oss << "\r\n";
     return (oss.str());
 }
 
 // POST
-std::string Response::_POSTmethod(HttpRequest &request)
+std::string Response::_POSTmethod(HttpRequest &request, Server &server)
 {
     std::ostringstream  oss;
 
+    (void)server;
     (void)request;
     // allowed methods -> check in cgi
     // cgi
     // check if upload location exitsts and method allowed, <-defined in config
-    // std::cout << request.getPath() << std::endl;
     // check if file to upload to exists
     // if file upload -> move to location 
     // if other create new file in location or if exist put data depending of type in there
@@ -198,7 +204,7 @@ std::string Response::_POSTmethod(HttpRequest &request)
     checkContent();
     oss << "HTTP/1.1 "<< _code <<" OK\r\n";
     oss << "Content-Type: "<< _contentType << "\r\n";
-    oss << "Content-Length: "<< _contentLength << "\r\n";
+    oss << "Content-Lenght: "<< _contentLength << "\r\n";
     oss << "\r\n";
     oss << _content;
     return (oss.str());
@@ -215,7 +221,7 @@ std::string Response::_DELETEmethod()
     checkContent();
     oss << "HTTP/1.1 "<< _code <<" OK\r\n";
     oss << "Content-Type: "<< _contentType << "\r\n";
-    oss << "Content-Length: "<< _contentLength << "\r\n";
+    oss << "Content-Lenght: "<< _contentLength << "\r\n";
     oss << "\r\n";
     oss << _content;
     return (oss.str());
@@ -223,7 +229,7 @@ std::string Response::_DELETEmethod()
 
 // ======   Public member functions   ======= //
 
-void    Response::buildResponse(HttpRequest &request){
+void    Response::buildResponse(HttpRequest &request, Server &server){
 
     _code = request.getError();//<- valid?
     // _contentType = getType(request);
@@ -232,10 +238,10 @@ void    Response::buildResponse(HttpRequest &request){
     switch (request.getMethod())
     {
         case GET:
-            _response_str = _GETmethod(request);
+            _response_str = _GETmethod(request, server);
             break;
         case POST:
-            _response_str = _POSTmethod(request);
+            _response_str = _POSTmethod(request, server);
             break;
         case DELETE:
             _response_str = _DELETEmethod();

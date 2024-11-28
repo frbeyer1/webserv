@@ -147,8 +147,10 @@ void    ServerManager::_readRequest(Client &client)
 
     if (client.request.getParsingState() == Parsing_Finished || client.request.getError() != OK)
     {
+        Server *ptr = client.server;
+
         Logger::log(CYAN, INFO, "Request recived from Client fd %i with Method[%s] and URI[%s]", fd, client.request.getMethodStr().c_str(), client.request.getPath().c_str());
-        client.response.buildResponse(client.request);
+        client.response.buildResponse(client.request, *ptr);
         struct epoll_event event;
 
         event.events = EPOLLOUT;

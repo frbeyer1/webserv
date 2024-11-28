@@ -4,6 +4,7 @@
 #include "HttpRequest.hpp"
 #include "Response.hpp"
 
+class Response;
 class Client
 {
 private:

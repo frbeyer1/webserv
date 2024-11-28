@@ -18,15 +18,15 @@ class Response
 
         // MIME TYPE??
         std::string _buildDefaultErrorPage(int error_code);
-        std::string _GETmethod(HttpRequest &request);
-        std::string _POSTmethod(HttpRequest &request);
+        std::string _GETmethod(HttpRequest &request, Server &server);
+        std::string _POSTmethod(HttpRequest &request, Server &server);
         std::string _DELETEmethod();
 
     public:
         Response();
         ~Response();
-        void        buildResponse(HttpRequest &request);
-        size_t        checkContent();
+        void        buildResponse(HttpRequest &request, Server &server);
+        size_t      checkContent();
     
         std::string getTargetFile();
         std::string getType(HttpRequest &request);
