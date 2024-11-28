@@ -17,6 +17,7 @@
 #include <fstream>
 #include <ctime>
 #include <cstring>
+#include <cstdarg>
 
 #include <map>
 #include <vector>
@@ -27,19 +28,10 @@
 #include "Logger.hpp"
 
 /*   Logger Settings   */
-#define LOGGER_STATE                                ON
-#define LOGGER_OUTPUT_MODE                          STDOUT
-#define LOGGER_LOG_LVL                              ERROR
-
-/*   HTTP Error Codes   */
-#define OK                                          200
-#define BAD_REQUEST                                 400
-#define FORBIDDEN                                   403
-#define NOT_FOUND                                   404
-#define PAYLOAD_TOO_LARGE                           413
-#define URI_TOO_LONG                                414
-#define REQUEST_HEADER_FIELDS_TOO_LARGE             431
-#define NOT_IMPLEMENTED                             501
+#define DEFAULT_LOGGER_STATE                        ON              // ON or OFF
+#define DEFAULT_LOGGER_OUTPUT                       STDOUT          // STDOUT or OUT_FILE  
+#define DEFAULT_LOGGER_LEVEL                        DEBUG           // ERROR, INFO or DEBUG
+#define LOGFILE_NAME                                "webserv.log"
 
 /*   Default Config Settings   */
 #define DEFAULT_CONFIG                              "conf/default.conf"
@@ -56,9 +48,20 @@
 #define BACKLOG                                     128
 #define MAX_URI_LENGHT                              4096
 #define MAX_HEADER_LENGHT                           8192
-#define CLIENT_CONNECTION_TIMEOUT                   60
-#define LOGFILE_NAME                                "webserv.log"
-#define READ_SIZE                                   8000
+#define CLIENT_CONNECTION_TIMEOUT                   10
+#define REQUEST_READ_SIZE                           4096
+#define RESPONSE_WRITE_SIZE                         4096
+
+/*   HTTP Error Codes   */
+#define OK                                          200
+#define NO_CONTENT                                  204
+#define BAD_REQUEST                                 400
+#define FORBIDDEN                                   403
+#define NOT_FOUND                                   404
+#define PAYLOAD_TOO_LARGE                           413
+#define URI_TOO_LONG                                414
+#define REQUEST_HEADER_FIELDS_TOO_LARGE             431
+#define NOT_IMPLEMENTED                             501
 
 /*   ANSI escape codes for colors   */
 #define RESET                                       "\033[0m"

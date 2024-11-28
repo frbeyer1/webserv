@@ -12,7 +12,7 @@ private:
     time_t              _last_msg_time;
 
 public:
-    Server              server;
+    Server              *server;
     HttpRequest         request;
     Response            response;
 

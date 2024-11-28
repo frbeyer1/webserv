@@ -124,9 +124,7 @@ static void handleListen(std::string parameter, Server &server)
     }
     catch(const std::exception& e)
     {
-        std::ostringstream oss;
-        oss << "Config file misconfigured: listen directive: IP invalid: " << e.what();
-        Logger::log(RED, ERROR, oss.str());
+        Logger::log(RED, ERROR, "Config file misconfigured: listen directive: IP invalid: %s", e.what());
         exit(EXIT_FAILURE);
     }
     server.setHost(host);
@@ -413,17 +411,13 @@ void    ConfigParser::_readConfig(std::string config)
 
     if (file.fail())
     {
-        std::ostringstream oss;
-        oss << "Unable to open file: " << config;
-        Logger::log(RED, ERROR, oss.str());
+        Logger::log(RED, ERROR, "Unable to open file: %s", config.c_str());
         exit(EXIT_FAILURE);
     }
     buffer << file.rdbuf();
     file.close();
     _content = buffer.str();
-    std::ostringstream oss;
-    oss << "Finished with reading file: " << config;
-    Logger::log(GREY, DEBUG, oss.str());
+    Logger::log(GREY, DEBUG, "Finished with reading file: %s", config.c_str());
 }
 
 /*

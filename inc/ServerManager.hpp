@@ -9,17 +9,16 @@ class Server;
 class ServerManager
 {
 private:
-    int                       _epoll_fd;
-    std::vector<Server>       _servers;
-    std::map<int, Server>     _server_map;
-    std::map<int, Client>     _client_map;
+    std::map<int, Server>   _server_map;
+    std::map<int, Client>   _client_map;
+    int                     _epoll_fd;
 
 // Private member functions
     void    _acceptNewConnection(int fd);
     void    _closeConnection(int fd);
     void    _checkTimeout();
-    void    _readRequest(int fd, Client &client);
-    void    _sendResponse(int fd, Client &client);
+    void    _readRequest(Client &client);
+    void    _sendResponse(Client &client);
 
 public:
 // Constructor
@@ -29,8 +28,7 @@ public:
     ~ServerManager();
 
 // Member functions
-    void    configure(std::string config);
-    void    setup();
+    void    setup(std::string config);
     void    boot();
 
 };

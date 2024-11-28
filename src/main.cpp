@@ -5,7 +5,6 @@ int main(int argc, char **argv)
 {
     std::string config;
 
-    Logger::setLogLvl(DEBUG);
     if (argc == 1)
         config = DEFAULT_CONFIG;
     else if (argc == 2)
@@ -17,20 +16,21 @@ int main(int argc, char **argv)
     }
     ServerManager   master;
 
-    master.configure(config);
-    master.setup();
+    master.setup(config);
     master.boot();
-    return (EXIT_SUCCESS);
 }
 
 // ==============   TO DO   ================== //
 
 // use read or recv and write or send ???
 
+// change Server on client to a refertenct to a server 
+
 // fds:
 // -    if exit (need to close all fds?)
 
 // config parser:
+// -    delete index in server block
 // -    handle alias and cgi
 // -    what if location directive is empty
 // -    max config lenght???

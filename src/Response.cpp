@@ -3,7 +3,7 @@
 // =============   Constructor   ============= //
 Response::Response()
 {
-    _contentLenght = 0;
+    _contentLength = 0;
     _code = 0;
 }
 
@@ -65,7 +65,7 @@ size_t Response::checkContent(){
         _content.append("\n");
     }
     file.close();
-    _contentLenght = _content.length();
+    _contentLength = _content.length();
     return(200);
 }
 
@@ -139,7 +139,7 @@ std::string Response::_GETmethod(HttpRequest &request)
         return(_buildDefaultErrorPage(_code));
     oss << "HTTP/1.1 "<< _code <<" OK\r\n";
     oss << "Content-Type: "<< _contentType << "\r\n";
-    oss << "Content-Lenght: "<< _contentLenght << "\r\n";
+    oss << "Content-Length: "<< _contentLength << "\r\n";
     oss << "Date: "<< getTimeAndDate() << "\r\n";
     oss << "\r\n";
     oss << _content;
@@ -151,10 +151,11 @@ std::string Response::_POSTmethod(HttpRequest &request)
 {
     std::ostringstream  oss;
 
+    (void)request;
     // allowed methods -> check in cgi
     // cgi
     // check if upload location exitsts and method allowed, <-defined in config
-    std::cout << request.getPath() << std::endl;
+    // std::cout << request.getPath() << std::endl;
     // check if file to upload to exists
     // if file upload -> move to location 
     // if other create new file in location or if exist put data depending of type in there
@@ -164,7 +165,7 @@ std::string Response::_POSTmethod(HttpRequest &request)
     checkContent();
     oss << "HTTP/1.1 "<< _code <<" OK\r\n";
     oss << "Content-Type: "<< _contentType << "\r\n";
-    oss << "Content-Lenght: "<< _contentLenght << "\r\n";
+    oss << "Content-Length: "<< _contentLength << "\r\n";
     oss << "\r\n";
     oss << _content;
     return (oss.str());
@@ -181,7 +182,7 @@ std::string Response::_DELETEmethod()
     checkContent();
     oss << "HTTP/1.1 "<< _code <<" OK\r\n";
     oss << "Content-Type: "<< _contentType << "\r\n";
-    oss << "Content-Lenght: "<< _contentLenght << "\r\n";
+    oss << "Content-Length: "<< _contentLength << "\r\n";
     oss << "\r\n";
     oss << _content;
     return (oss.str());

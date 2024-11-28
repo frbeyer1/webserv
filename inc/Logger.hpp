@@ -2,40 +2,39 @@
 
 #include "Webserv.hpp"
 
-enum LogLvl
+enum LogState
+{
+    ON,
+    OFF,
+};
+
+enum LogLevel
 {
     ERROR,
     INFO,
     DEBUG,
 };
 
-enum OutputMode
+enum LogOutput
 {
     STDOUT,
     OUT_FILE,
 };
 
-enum State
-{
-    ON,
-    OFF,
-};
-
 class Logger
 {
 private:
-    static State       _state;
-    static LogLvl      _loglvl;
-    static OutputMode  _mode;
+    static LogState     _state;
+    static LogLevel     _level;
+    static LogOutput    _output;
 
 public:
-
 // Setter
-    static void setState(State state);
-    static void setOutputMode(OutputMode mode);
-    static void setLogLvl(LogLvl loglvl);
+    static void setState(LogState state);
+    static void setLogLevel(LogLevel level);
+    static void setOutputMode(LogOutput output);
 
 // Static member functions
-    static void log(const char *color, LogLvl loglvl, std::string msg);
+    static void log(const char *color, LogLevel loglvl, const char *format, ...);
 
 };

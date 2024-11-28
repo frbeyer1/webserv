@@ -1,15 +1,14 @@
 #include "../inc/Client.hpp"
 
 // =========   Default Constructor   ========= //
-Client::Client() : server() 
+Client::Client() : server(NULL)
 {
-    _last_msg_time = time(NULL);
 }
 
 // =============   Constructor   ============= //
-Client::Client(Server &s) : server(s), request(), response()
+Client::Client(Server &s) : server(&s)
 {
-    request.setClientMaxBodySize(server.getClientMaxBodySize());
+    request.setClientMaxBodySize(server->getClientMaxBodySize());
     _last_msg_time = time(NULL);
 }
 

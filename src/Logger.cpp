@@ -1,23 +1,23 @@
 #include "../inc/Logger.hpp"
 
-State Logger::_state = ON;
-LogLvl Logger::_loglvl = ERROR;
-OutputMode Logger::_mode = STDOUT;
+LogState Logger::_state = DEFAULT_LOGGER_STATE;
+LogLevel Logger::_level = DEFAULT_LOGGER_LEVEL;
+LogOutput Logger::_output = DEFAULT_LOGGER_OUTPUT;
 
 // ================   Setter   =============== //
-void    Logger::setState(State state)
+void    Logger::setState(LogState state)
 {
     _state = state;
 }
 
-void    Logger::setLogLvl(LogLvl loglvl)
+void    Logger::setLogLevel(LogLevel level)
 {
-    _loglvl = loglvl;
+    _level = level;
 }
 
-void    Logger::setOutputMode(OutputMode mode)
+void    Logger::setOutputMode(LogOutput output)
 {
-    _mode = mode;
+    _output = output;
 }
 
 // ================   Utils   ================ //
@@ -26,9 +26,9 @@ returns an timestamp with the format [day/month/year  hours:minutes:seconds]
 */
 static std::string getTimestamp()
 {
+    char        buffer[50];
     std::time_t t = std::time(NULL);
     std::tm     tm = *std::localtime(&t);
-    char        buffer[50];
 
     std::strftime(buffer, sizeof(buffer), "[%d/%b/%Y  %H:%M:%S]", &tm);
     return (std::string(buffer));
@@ -37,7 +37,7 @@ static std::string getTimestamp()
 /*
 returns an string with the loglvl
 */
-static std::string getLogLvlStr(LogLvl loglvl)
+static std::string getLogLevelStr(LogLevel loglvl)
 {
     std::string str;
 
@@ -56,26 +56,34 @@ static std::string getLogLvlStr(LogLvl loglvl)
 
 // =======   Static member functions   ======= //
 /*
-logs an message depending on the log settings
+logs an message depending on the logger settings
 */
-void    Logger::log(const char *color, LogLvl loglvl, std::string msg)
+void    Logger::log(const char *color, LogLevel level, const char *format, ...)
 {
     if (_state == OFF)
         return ;
-    if (loglvl > _loglvl)
+    if (level > _level)
         return ;
-    if (_mode == OUT_FILE)
+
+    char        output[250];
+    va_list     args;
+
+    va_start(args, format);
+    vsnprintf(&output[0], 250, format, args);
+    va_end(args);
+
+    if (_output == OUT_FILE)
     {
-        std::ofstream   outFile(LOGFILE_NAME);
+        std::ofstream outFile(LOGFILE_NAME, std::ios::app);
 
         if (outFile.is_open())
         {
-            outFile << getTimestamp() << getLogLvlStr(loglvl) << msg << std::endl;
+            outFile << getTimestamp() << getLogLevelStr(level) << output << std::endl;
             outFile.close();
         }
         else
-            std::cerr << RED << getTimestamp() << getLogLvlStr(ERROR) << "Could not open file: " << LOGFILE_NAME << RESET << std::endl;
+            std::cerr << RED << getTimestamp() << getLogLevelStr(ERROR) << "Could not open file: " << LOGFILE_NAME << RESET << std::endl;
     }
-    else if (_mode == STDOUT)
-        std::cout << color << getTimestamp() << getLogLvlStr(loglvl) << msg << RESET << std::endl;
+    else if (_output == STDOUT)
+        std::cout << color << getTimestamp() << getLogLevelStr(level) << output << RESET << std::endl;
 }

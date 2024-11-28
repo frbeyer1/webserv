@@ -94,6 +94,7 @@ public:
     int                                         getVersionMinor() const;
     ParsingState                                getParsingState() const;
     HttpMethod                                  getMethod() const;
+    const std::string                           &getMethodStr() const;
     const std::string                           &getPath() const;
     const std::string                           &getQuery() const;
     const std::string                           &getFragment() const;

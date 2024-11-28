@@ -47,7 +47,7 @@ public:
     std::string                   getIp() const;
     uint16_t                      getPort() const;
     int                           getServerFd() const;
-    std::string                   getSeverName() const;
+    std::string                   getServerName() const;
     std::string                   getRoot() const;
     size_t                        getClientMaxBodySize() const;
     std::map<int, std::string>&   getErrorPages() ;

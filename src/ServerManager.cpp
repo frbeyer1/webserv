@@ -14,10 +14,10 @@ ServerManager::~ServerManager()
 /*
 adds the add_fd to the epoll instance
 */
-static void addToEpollInstance(int epoll_fd, int add_fd)
+static void    addToEpollInstance(int epoll_fd, int add_fd)
 {
     struct epoll_event event;
-    event.events = EPOLLIN | EPOLLOUT; 
+    event.events = EPOLLIN; 
     event.data.fd = add_fd;
     if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, add_fd, &event) == -1)
     {
@@ -29,7 +29,7 @@ static void addToEpollInstance(int epoll_fd, int add_fd)
 /*
 Checks for duplicates in the server list (same Host and Port)
 */
-static  bool    checkDuplicates(std::vector<Server> &servers)
+static bool    checkDuplicates(std::vector<Server> &servers)
 {
     bool    duplicate;
 
@@ -47,19 +47,20 @@ static  bool    checkDuplicates(std::vector<Server> &servers)
 
 // ======   Private member functions   ======= //
 /*
-accepts new connection and puts the new client into the client_map and epoll instance
+accepting a new connection:
+    - adding the new client into the client_map 
+    - adding client_fd to the epoll instance
 */
 void    ServerManager::_acceptNewConnection(int server_fd)
 {
-    if (_server_map.size() > MAX_CONNECTIONS)
+    if (_client_map.size() >= MAX_CONNECTIONS)
     {
-        std::ostringstream oss;
-        oss << "Did not accept connection, because there are more than " << MAX_CONNECTIONS;
-        Logger::log(YELLOW, INFO, oss.str());
+        Logger::log(YELLOW, INFO, "Did not accept new connection, because there are allready MAX_CONNECTIONS[%i]", MAX_CONNECTIONS);
         return ;
     }
-    int     client_fd;
+
     Client  client(_server_map[server_fd]);
+    int     client_fd;
 
     client_fd = _server_map[server_fd].acceptConnection();
     client.setClientFd(client_fd);
@@ -68,62 +69,72 @@ void    ServerManager::_acceptNewConnection(int server_fd)
         _client_map.erase(client_fd);
     _client_map.insert(std::make_pair(client_fd, client));
     addToEpollInstance(_epoll_fd, client_fd);
-    std::ostringstream oss;
-    oss << "Accpted new Connection from " << sockaddrToIpString(client.getClientAddress()) << ", on fd " << client_fd;
-    Logger::log(WHITE, INFO, oss.str());
+    Logger::log(CYAN, INFO, "Accpted new Connection from %s, on fd %i", sockaddrToIpString(client.getClientAddress()).c_str(), client_fd);
 }
 
 /*
-closes connection and removes the client from the client_map and epoll instance
+closes connection:
+    - removing the client_fd fromt the epoll instance
+    - closing the client_fd
+    - removing the client from the client_map
 */
 void    ServerManager::_closeConnection(int fd)
 {
     if (epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, fd, NULL) == -1)
     {
-        Logger::log(RED, ERROR, "deleting from epoll instance failed");
+        Logger::log(RED, ERROR, "Deleting from epoll instance failed");
         exit(EXIT_FAILURE);
     }
-    close(fd);
+    if (close(fd))
+    {
+        Logger::log(RED, ERROR, "Closing fd %i failed", fd);
+        exit(EXIT_FAILURE);
+    }
     _client_map.erase(fd);
-    std::ostringstream oss;
-    oss  << "Closed Connection " << fd;
-    Logger::log(WHITE, INFO, oss.str());
+    Logger::log(CYAN, INFO, "Closed Connection %i", fd);
 }
 
 /*
-checks for timeouts on all clients
+checking for timeouts of clients in the _client_map
 */
 void    ServerManager::_checkTimeout()
 {
+    std::vector<int> timeouts;
+
     for (std::map<int, Client>::iterator it = _client_map.begin(); it != _client_map.end(); it++)
     {
         if (time(NULL) - it->second.getLastMsgTime() > CLIENT_CONNECTION_TIMEOUT)
-        {
-            std::ostringstream oss;
-            oss  << "Client timeout: Client_FD[" << it->second.getClientFd() << "], closing connection ...";
-            Logger::log(WHITE, INFO, oss.str());
-            _closeConnection(it->first);
-        }
+            timeouts.push_back(it->first);
+    }
+    for (size_t i = 0; i < timeouts.size(); i++)
+    {
+        Logger::log(YELLOW, INFO, "Client timeout: Client_FD[%i], closing connection ...", timeouts[i]);
+        _closeConnection(timeouts[i]);
     }
 }
 
 /*
-reads READ_SIZE amount of octets of the fd and feeds it to the HttpRequest parser
+Reading of the HTTP Request:
+    - reading READ_SIZE amount of octest from the client into an buffer
+    - parsing the buffer into an HttpRequest object
+    - set epoll settings to EPOLLOUT on client_fd if recieved full request
 */
-void    ServerManager::_readRequest(int fd, Client &client)
+void    ServerManager::_readRequest(Client &client)
 {
-    uint8_t buffer[READ_SIZE];
-    int     bytes_read;
+    uint8_t buffer[REQUEST_READ_SIZE];
+    int     bytes_read = 0;
+    int     fd = client.getClientFd();
 
-    bytes_read = read(fd, buffer, READ_SIZE);
+    bytes_read = read(fd, buffer, REQUEST_READ_SIZE);
+    if (bytes_read == 0)
+    {
+        Logger::log(CYAN, INFO, "Client %i Closed Connection", fd);
+        _closeConnection(fd);
+        return ;
+    }
     if (bytes_read < 0)
     {
-        std::ostringstream oss;
-        oss << "Error: read error on fd " << fd;
-        Logger::log(RED, ERROR, oss.str());
-    }
-    if (bytes_read <= 0)
-    {
+        Logger::log(RED, ERROR, "Read error on fd %i", fd);
         _closeConnection(fd);
         return ;
     }
@@ -132,89 +143,144 @@ void    ServerManager::_readRequest(int fd, Client &client)
         client.setLastMsgTime(time(NULL));
         client.request.parse(buffer, bytes_read);
         std::memset(buffer, 0, sizeof(buffer));
-            std::cout <<  "readrequest" << std::endl;
-        if (client.request.getParsingState() == Parsing_Finished)
+    }
+
+    if (client.request.getParsingState() == Parsing_Finished || client.request.getError() != OK)
+    {
+        Logger::log(CYAN, INFO, "Request recived from Client fd %i with Method[%s] and URI[%s]", fd, client.request.getMethodStr().c_str(), client.request.getPath().c_str());
+        client.response.buildResponse(client.request);
+        struct epoll_event event;
+
+        event.events = EPOLLOUT;
+        event.data.fd = fd;
+        if (epoll_ctl(_epoll_fd, EPOLL_CTL_MOD, fd, &event))
         {
-            client.response.buildResponse(client.request);
-            client.request.clear();
+            Logger::log(RED, ERROR, "Changing settings associated with fd in epoll instance failed");
+            exit(EXIT_FAILURE);
         }
     }
 }
 
 /*
-sends the already build response
+sending the Response to the client:
+    - 
+    - 
+    - set epoll settings to EPOLLIN after sending response to client
 */
-void    ServerManager::_sendResponse(int fd, Client &client)
+void    ServerManager::_sendResponse(Client &client)
 {
-    std::string &respons_str = client.response.getResponseStr();
-    // getTargetFile();
-    std::cout << respons_str << std::endl;
-    write(fd, respons_str.c_str(), respons_str.size());
-    exit(1);
+    int bytes_send = 0;
+    int fd = client.getClientFd();
+
+    std::string &response = client.response.getResponseStr();
+
+    bytes_send = write(fd, response.c_str(), response.size());
+    if (bytes_send < 0)
+    {
+        Logger::log(RED, ERROR, "Write error on fd %i", fd);
+        _closeConnection(fd);
+        // needs to clear the client in the end but needs to return here
+    }
+
+    Logger::log(CYAN, INFO, "Send Response to Client fd %i with Code[%i]", client.getClientFd(), client.response.getCode());
+    
+    std::map<std::string, std::string>::const_iterator it = client.request.getHeaders().find("Connection");
+    if(it != client.request.getHeaders().end() && it->second == "keep-alive")
+    {
+        struct epoll_event event;
+
+        event.events = EPOLLIN;
+        event.data.fd = fd;
+        if (epoll_ctl(_epoll_fd, EPOLL_CTL_MOD, fd, &event))
+        {
+            Logger::log(RED, ERROR, "Changing settings associated with fd in epoll instance failed");
+            exit(EXIT_FAILURE);
+        }
+    }
+    else
+    {
+        // Logger:log
+        _closeConnection(fd);
+    }
+    client.request.clear();
 }
 
 // ==========   Member functions   =========== //
 /*
-parses the config file
+setting up all server
+    - parsing the config file
+    - checking for duplicates in the server list
+    - setting up all servers and adding them to the _server_map
 */
-void    ServerManager::configure(std::string config)
+void    ServerManager::setup(std::string config)
 {
-    ConfigParser    parser(_servers);
+    // parsing of the config file
+    std::vector<Server> servers;
+    ConfigParser        parser(servers);
 
     parser.parse(config);
     Logger::log(GREY, DEBUG, "Finished config file parsing");
-}
 
-/*
-setting up all servers
-*/
-void    ServerManager::setup()
-{
-    Logger::log(WHITE, INFO, "Setting up servers...");
-    if (checkDuplicates(_servers))
+    // checking for duplicates in the server list
+    Logger::log(WHITE, INFO, "Setting up servers ...");
+    if (checkDuplicates(servers))
     {
         Logger::log(RED, ERROR, "Could not setup servers, because of duplicates in config file");
         exit(EXIT_FAILURE);
     }
-    for (std::vector<Server>::iterator it = _servers.begin(); it != _servers.end(); it++)
+
+    // setup the servers and adding to the _server_map
+    for (std::vector<Server>::iterator it = servers.begin(); it != servers.end(); it++)
     {
         it->setup();
         _server_map.insert(std::pair<int, Server>(it->getServerFd(), *it));
-        std::ostringstream oss;
-        oss << "Server setup: ServerName[" << it->getSeverName() << "] Host[" << it->getIp() << "] Port[" << it->getPort() << "]";
-        Logger::log(WHITE, INFO, oss.str());
+        Logger::log(WHITE, INFO, "Server setup: ServerName[%s] Host[%s] Port[%i]", it->getServerName().c_str(), it->getIp().c_str(), it->getPort());
     }
     Logger::log(GREY, DEBUG, "Setting up servers finished");
 }
 
 /*
-starts listening on the servers and setting up of the epoll instance for I/O multiplexing
+booting the servers:
+    - creating the epoll instance
+    - adding server_fds to the epoll instance
+    - start listening on the server sockets
+main server loop:
+    - waiting for events on the fds of the epoll instance
+    - handling the epoll event list
+    - checking for timeouts
 */
 void    ServerManager::boot()
 {
     Logger::log(WHITE, INFO, "Booting Servers ...");
+
     // creates epoll instance
     _epoll_fd = epoll_create(1);
     if (_epoll_fd == -1)
     {
-        Logger::log(RED, ERROR, "creating epoll instace failed");
+        Logger::log(RED, ERROR, "Creating epoll instace failed");
         exit(EXIT_FAILURE);
     }
-    // adds all server_fds to epoll instance and starts listening on them
-    for (std::vector<Server>::iterator it = _servers.begin(); it != _servers.end(); it++)
+
+    // adds all server_fds to epoll instance and starts listening on the server sockets
+    for (std::map<int, Server>::iterator it = _server_map.begin(); it != _server_map.end(); it++)
     {
-        addToEpollInstance(_epoll_fd, it->getServerFd());
-        it->startListening();
+        addToEpollInstance(_epoll_fd, it->second.getServerFd());
+        it->second.startListening();
     }
+
+    // main server loop
     struct epoll_event event_list[MAX_EPOLL_EVENTS];
+
     while (true)
     {
+        // wating for events on the epoll instance
         int num_events = epoll_wait(_epoll_fd, event_list, MAX_EPOLL_EVENTS, -1);
         if (num_events == -1)
         {
-            Logger::log(RED, ERROR, "waiting for event on the epoll instance failed");
+            Logger::log(RED, ERROR, "Waiting for event on the epoll instance failed");
             exit(EXIT_FAILURE);
         }
+        // handling of the epoll event list
         for (int i = 0; i < num_events; i++)
         {
             int fd = event_list[i].data.fd;
@@ -222,9 +288,9 @@ void    ServerManager::boot()
             if (_server_map.count(fd))
                 _acceptNewConnection(fd);
             else if (_client_map.count(fd) && event_list[i].events & EPOLLIN)
-                _readRequest(fd, _client_map[fd]);
+                _readRequest(_client_map[fd]);
             else if (_client_map.count(fd) && event_list[i].events & EPOLLOUT)
-                _sendResponse(fd, _client_map[fd]);
+                _sendResponse(_client_map[fd]);
             else
                 close(fd);
         }

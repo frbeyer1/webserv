@@ -3,8 +3,8 @@
 // =============   Constructor   ============= //
 HttpRequest::HttpRequest()
 {
-    clear();
     _client_max_body_size = 0;
+    clear();
 }
 
 // ===========   Copy Constructor   ========== //
@@ -71,6 +71,10 @@ HttpMethod    HttpRequest::getMethod() const
 ParsingState    HttpRequest::getParsingState() const
 {
     return _state;
+}
+const std::string   &HttpRequest::getMethodStr() const
+{
+    return _method_str;
 }
 
 const std::string   &HttpRequest::getPath() const
@@ -195,12 +199,12 @@ static void    trimFieldValueStr(std::string &string)
 // ==========   Member functions   =========== //
 
 /*
-clears and resets all variables in the object
+clears and resets all variables (except _client_max_body_size) in the object
 */
 void    HttpRequest::clear()
 {
     _state = Empty_Line;
-    _error = 200;
+    _error = OK;
     _method = NONE;
     _path = "";
     _query = "";
@@ -220,6 +224,7 @@ void    HttpRequest::clear()
     _chunked_transfer_flag = false;
     _ss.str("");
     _ss.clear();
+    _headers.clear();
 }
 
 /*
@@ -256,13 +261,13 @@ void    HttpRequest::parse(uint8_t *data, size_t size)
                     _method = NONE;
                 _state = Request_Line_URI_Slash;
             }
+            else
+                _method_str.push_back(ch);
             if ((ch == ' ' && _method == NONE) || _method_str.size() > 7)
             {
                 _error = NOT_IMPLEMENTED;
                 return;
             }
-            else
-                _method_str.push_back(ch);
             break;
         case Request_Line_URI_Slash:
             if (ch != '/')

@@ -10,9 +10,7 @@ Server::Server()
     }
     catch(const std::exception& e)
     {
-        std::ostringstream oss;
-        oss << "Webserv header misconfigured: DEFAULT_HOST: ip invalid: " << e.what();
-        Logger::log(RED, ERROR, oss.str());
+        Logger::log(RED, ERROR, "Webserv header misconfigured: DEFAULT_HOST: ip invalid: %s", e.what());
         exit(EXIT_FAILURE);
     }
     _port = DEFAULT_PORT;
@@ -48,7 +46,7 @@ int Server::getServerFd() const
     return (_server_fd);
 }
 
-std::string Server::getSeverName() const
+std::string Server::getServerName() const
 {
     return (_server_name);
 }
@@ -129,7 +127,7 @@ static void    setNonBlocking(int fd)
     int flags = fcntl(fd, F_GETFL, 0);
     if (flags == -1)
     {
-        Logger::log(RED, ERROR, "could not get flags from file descriptor");
+        Logger::log(RED, ERROR, "Could not get flags from file descriptor");
         exit(EXIT_FAILURE);
     }
     // Set the flags to include O_NONBLOCK
@@ -137,7 +135,7 @@ static void    setNonBlocking(int fd)
     // Set the new flags for the file descriptor
     if (fcntl(fd, F_SETFL, flags) == -1)
     {
-        Logger::log(RED, ERROR, "could not set flags to file descriptor");
+        Logger::log(RED, ERROR, "Could not set flags to file descriptor");
         exit(EXIT_FAILURE);
     }
 }
@@ -159,7 +157,7 @@ void    Server::setup()
     const int opt = 1;
     if (setsockopt(_server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
     {
-        Logger::log(RED, ERROR, "setsockopt (SO_REUSEADDR) failed");
+        Logger::log(RED, ERROR, "Setsockopt (SO_REUSEADDR) failed");
         exit(EXIT_FAILURE);
     }
     // 3. setup and bind the address to the socket
@@ -169,7 +167,8 @@ void    Server::setup()
     std::memset(_socket_address.sin_zero, '\0', sizeof(_socket_address.sin_zero));
     if (bind(_server_fd, (struct sockaddr *)&_socket_address, sizeof(_socket_address)) < 0)
     {
-        Logger::log(RED, ERROR, "Could not bind socket");
+        perror("Bind failed");
+        // Logger::log(RED, ERROR, "Could not bind socket");
         exit(EXIT_FAILURE);
     }
     setNonBlocking(_server_fd);

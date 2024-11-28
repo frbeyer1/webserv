@@ -13,7 +13,7 @@ class Response
         std::string _response_str;
         std::string _content;
         std::string _contentType;
-        size_t      _contentLenght;
+        size_t      _contentLength;
         size_t      _code;
 
         // MIME TYPE??
