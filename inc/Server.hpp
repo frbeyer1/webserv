@@ -11,13 +11,13 @@ typedef struct allowed_methods_s
 
 typedef struct location_s
 {
-    allowed_methods_t           allowed_methods;
-    std::string                 redirection;
-    std::string                 alias;
-    std::string                 index;
-    std::string                 upload;
-    std::string                 cgi;
-    bool                        autoindex;
+    allowed_methods_t                   allowed_methods;
+    std::string                         redirection;
+    std::string                         alias;
+    std::string                         index;
+    std::string                         upload;
+    // std::map<std::string, std::string>  cgi;
+    bool                                autoindex;
 }           location_t;
 
 class Server
@@ -29,7 +29,6 @@ private:
     std::string                         _ip;
     std::string                         _root;
     size_t                              _client_max_body_size;
-    std::string                         _index;
     std::map<int, std::string>          _error_pages;
     std::map<std::string, location_t>   _locations;
     int                                 _server_fd;
@@ -61,7 +60,6 @@ public:
     void                          setServerName(std::string server_name);
     void                          setClientMaxBodySize(size_t client_max_body_size);
     void                          setErrorPage(int status_code, std::string page_path);
-    void                          setIndex(std::string index);
     void                          setLocation(std::string path, location_t location);
 
 // Member functions

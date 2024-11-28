@@ -293,10 +293,40 @@ static void handleRedirection(std::string parameter, location_t &location)
     location.redirection = parameter;
 }
 
-static void handleAlias(std::string parameter, location_t &location)
+/*
+Checks the alias parameter:
+    - is the parameter an directory
+    - does the directory have read rights
+*/
+static void handleAlias(std::string parameter, location_t &location, Server &server)
 {
-    (void)parameter;
-    (void)location;
+    std::string alias_path = server.getRoot() + parameter;
+    struct stat buf;
+
+    if (alias_path[alias_path.size() - 1] != '/')
+    {
+        Logger::log(RED, ERROR, "Error: config file misconfigured: alias directive: missing '/' at end");
+        exit(EXIT_FAILURE);
+    }
+    if (stat(alias_path.c_str(), &buf) != 0)
+    {
+        Logger::log(RED, ERROR, "Error: Config file misconfigured: alias directive: path invalid");
+        exit(EXIT_FAILURE);
+    }
+    if (S_ISDIR(buf.st_mode))
+    {
+        if (access(alias_path.c_str(), R_OK))
+        {
+            Logger::log(RED, ERROR, "Config file misconfigured: alias directive: directory has no read rights");
+            exit(EXIT_FAILURE);
+        }
+        location.alias = alias_path;
+    }
+    else
+    {
+        Logger::log(RED, ERROR, "Config file misconfigured: alias directive: is no directory");
+        exit(EXIT_FAILURE);
+    }
 }
 
 /*
@@ -321,7 +351,7 @@ Checks the index parameter inside an location:
  - is the file there? (dependent on root)
  - and does it has read rights?
 */
-static void handleIndexLocation(std::string parameter, location_t &location, Server &server)
+static void handleIndex(std::string parameter, location_t &location, Server &server)
 {
     std::string index = server.getRoot() + parameter;
     struct stat buf;
@@ -337,29 +367,6 @@ static void handleIndexLocation(std::string parameter, location_t &location, Ser
         exit(EXIT_FAILURE);
     }
     location.index = index;
-}
-
-/*
-Checks the index parameter:
- - is the file there? (dependent on root)
- - and does it has read rights?
-*/
-static void handleIndex(std::string parameter, Server &server)
-{
-    std::string index = server.getRoot() + parameter;
-    struct stat buf;
-
-    if (stat(index.c_str(), &buf) != 0 || S_ISREG(buf.st_mode) == 0)
-    {
-        Logger::log(RED, ERROR, "Config file misconfigured: index directive: index file is invalid");
-        exit(EXIT_FAILURE);
-    }
-    if (access(index.c_str(), R_OK))
-    {
-        Logger::log(RED, ERROR, "Config file misconfigured: index directive: index file has no read rights");
-        exit(EXIT_FAILURE);
-    }
-    server.setIndex(index);
 }
 
 /*
@@ -393,6 +400,9 @@ static void handleUpload(std::string parameter, location_t &location, Server &se
     }
 }
 
+/*
+work in progress ...
+*/
 static void handleCgi(std::string parameter, location_t &location)
 {
     (void)parameter;
@@ -604,13 +614,13 @@ void    ConfigParser::_getLocation(Server &server)
             handleRedirection(parameter, location);
             break;
         case ALIAS:
-            handleAlias(parameter, location);
+            handleAlias(parameter, location, server);
             break;
         case AUTOINDEX:
             handleAutoIndex(parameter, location);
             break;
         case INDEX:
-            handleIndexLocation(parameter, location, server);
+            handleIndex(parameter, location, server);
             break;
         case UPLOAD:
             handleUpload(parameter, location, server);
@@ -661,9 +671,6 @@ void    ConfigParser::_getDirective(Server &server)
         break;
     case ERROR_PAGE:
         handleErrorPage(parameter, server);
-        break;
-    case INDEX:
-        handleIndex(parameter, server);
         break;
     case LOCATION:
         _getLocation(server);

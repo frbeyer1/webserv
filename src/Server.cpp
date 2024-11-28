@@ -17,7 +17,6 @@ Server::Server()
     _server_name = DEFAULT_NAME;
     _root = DEFAULT_ROOT;
     _client_max_body_size = DEFAULT_CLIENT_MAX_BODY_SIZE;
-    _index = DEFAULT_INDEX;
 }
 
 // ============   Deconstructor   ============ //
@@ -105,11 +104,6 @@ void    Server::setClientMaxBodySize(size_t client_max_body_size)
 void    Server::setErrorPage(int status_code, std::string page_path)
 {
     _error_pages.insert(std::pair<int, std::string>(status_code, page_path));
-}
-
-void    Server::setIndex(std::string index)
-{
-    _index = index;
 }
 
 void    Server::setLocation(std::string path, location_t location)

@@ -22,16 +22,15 @@ int main(int argc, char **argv)
 
 // ==============   TO DO   ================== //
 
-// use read or recv and write or send ???
+//  add debug messages 
 
-// change Server on client to a refertenct to a server 
+// use read or recv and write or send ??? 
 
 // fds:
-// -    if exit (need to close all fds?)
+// -    if exit (need to close all open fds?)
 
 // config parser:
-// -    delete index in server block
-// -    handle alias and cgi
+// -    cgi
 // -    what if location directive is empty
 // -    max config lenght???
 
@@ -41,3 +40,4 @@ int main(int argc, char **argv)
 
 // Response
 // -    check for one and a valid host header(if not -> 400 bad request) read rfc for more detail
+// -    do we sent the response in packets ? or chuncked or at once

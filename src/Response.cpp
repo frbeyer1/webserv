@@ -52,9 +52,40 @@ static  std::string lookupErrorMessage(int error_code)
     }
 }
 
+static std::string getMimeType(const std::string& filename)
+{
+    size_t dotPos = filename.find_last_of(".");
+    
+    if (dotPos != std::string::npos)
+    {
+        std::map<std::string, std::string> mimeTypes;
+
+        mimeTypes[".html"] = "text/html";
+        mimeTypes[".htm"] = "text/html";
+        mimeTypes[".css"] = "text/css";
+        mimeTypes[".js"] = "application/javascript";
+        mimeTypes[".png"] = "image/png";
+        mimeTypes[".jpg"] = "image/jpeg";
+        mimeTypes[".jpeg"] = "image/jpeg";
+        mimeTypes[".gif"] = "image/gif";
+        mimeTypes[".pdf"] = "application/pdf";
+        mimeTypes[".txt"] = "text/plain";
+        mimeTypes[".gif"] = "image/gif";
+        mimeTypes[".ico"] = "image/x-icon";
+        mimeTypes[".mp3"] = "audio/mpeg";
+        mimeTypes[".mp4"] = "video/mp4";
+        mimeTypes[".sh"] = "application/x-sh";
+        std::string extension = filename.substr(dotPos);
+        std::map<std::string, std::string>::iterator it = mimeTypes.find(extension);
+        if (it != mimeTypes.end())
+            return it->second;
+    }
+    return "application/octet-stream";
+}
+
 size_t Response::checkContent(){
     std::string tmp;
-    std::ifstream file(_contentPath.c_str());//-----------------
+    std::ifstream file(_contentPath.c_str(), std::ios::binary);//-----------------
 
     if (!file.is_open()) {
         std::cerr << "Error: Could not open the file." << std::endl;
@@ -80,7 +111,8 @@ std::string Response::getTimeAndDate(){
     return oss.str();
 }
 
-std::string Response::getType(HttpRequest &request){
+std::string Response::getType(HttpRequest &request)
+{
     for (std::map<std::string, std::string>::const_iterator it = request.getHeaders().begin(); it != request.getHeaders().end(); it++){
         // std::cout << it->first << ":" << it->second << std::endl;
         if(it->first == "Accept")
@@ -135,6 +167,7 @@ std::string Response::_GETmethod(HttpRequest &request)
         //_contentPath = configparser-location.root + request.getPath()
         _contentPath = "docs/" + request.getPath();//check if exists //handle paga->page->page... return _code
     _code = checkContent();
+    _contentType = getMimeType(_contentPath);
     if(_code != 200)
         return(_buildDefaultErrorPage(_code));
     oss << "HTTP/1.1 "<< _code <<" OK\r\n";
@@ -193,7 +226,7 @@ std::string Response::_DELETEmethod()
 void    Response::buildResponse(HttpRequest &request){
 
     _code = request.getError();//<- valid?
-    _contentType = getType(request);
+    // _contentType = getType(request);
     if(_code != 200)
         _response_str = _buildDefaultErrorPage(_code);
     switch (request.getMethod())
