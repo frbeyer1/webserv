@@ -147,30 +147,39 @@ std::string Response::_buildDefaultErrorPage(int error_code)
     return (oss.str());
 }
 
+        // for (std::map<std::string, location_t>::const_iterator it = server.getLocations().begin(); it != server.getLocations().end(); it++){
+        //     std::cout << "Key: " << it->first << std::endl;
+        //     // std::cout << "  allowed_methods: " << it->second.allowed_methods << std::endl;
+        //     std::cout << "  redirection: " << it->second.redirection << std::endl;
+        //     std::cout << "  alias: " << it->second.alias << std::endl;
+        //     std::cout << "  index: " << it->second.index << std::endl;
+        //     std::cout << "  upload: " << it->second.upload << std::endl;
+        //     std::cout << "  autoindex: " << (it->second.autoindex ? "true" : "false") << std::endl;
+        //     std::cout << std::endl;
+        // }
 // GET
 std::string Response::_GETmethod(HttpRequest &request, Server &server)
 {
     std::ostringstream  oss;
 
-    (void)server;
-    // std::cout << request.getPath() << std::endl;
     if(request.getPath() == "/")
     {
-        //check if index exits if not autoindex(if on true) return _code
-        //_contentPath = configparser-location.root + configparser-location.index
-        // if(server.getRoot())
-        _contentPath = "docs/index.html";
-        std::cout << server.getRoot() << std::endl;
-        // std::cout << server. << std::endl;
+        if (!server.getLocations().begin()->second.index.empty())
+            _contentPath =  server.getLocations().begin()->second.index;
+        else if(server.getLocations().begin()->second.autoindex == true)
+            _contentPath = server.getRoot() + "autoindex.html"; //check autoindex format?
+        else
+            return(_buildDefaultErrorPage(404));
     }
     // else if(request.getPath().find("/cgi-bin") != std::string::npos)
-        // CgiHandler   cgi();
+        // CgiHandler   cgi(request, server);
         // size_t       i = request.getPath().find("/cgi-bin/");
         // std::string  cgi_program = request.getPath().substr(i,npos);
         // allowed methods -> check in cgi
+    else if (!server.getRoot().empty() && !request.getPath().empty())
+        _contentPath = server.getRoot() + request.getPath();
     else
-        //_contentPath = configparser-location.root + request.getPath()
-        _contentPath = "docs/" + request.getPath();//check if exists //handle paga->page->page... return _code
+        return(_buildDefaultErrorPage(404));
     _contentType = getMimeType(_contentPath);
     _code = checkContent();
     if(_code != 200)

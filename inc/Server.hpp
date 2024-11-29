@@ -30,7 +30,7 @@ private:
     std::string                         _root;
     size_t                              _client_max_body_size;
     std::map<int, std::string>          _error_pages;
-    std::map<std::string, location_t>   _locations;
+    std::map<std::string, location_t>   _locations; //new
     int                                 _server_fd;
     struct sockaddr_in                  _socket_address;
 
@@ -42,15 +42,16 @@ public:
     ~Server();
 
 // Getters
-    in_addr_t                     getHost() const;
-    std::string                   getIp() const;
-    uint16_t                      getPort() const;
-    int                           getServerFd() const;
-    std::string                   getServerName() const;
-    std::string                   getRoot() const;
-    size_t                        getClientMaxBodySize() const;
-    std::map<int, std::string>&   getErrorPages() ;
-    struct sockaddr_in            getSocketAddress() const;
+    in_addr_t                               getHost() const;
+    std::string                             getIp() const;
+    uint16_t                                getPort() const;
+    int                                     getServerFd() const;
+    std::string                             getServerName() const;
+    std::string                             getRoot() const;
+    size_t                                  getClientMaxBodySize() const;
+    std::map<int, std::string>&             getErrorPages() ;
+    struct sockaddr_in                      getSocketAddress() const;
+    const std::map<std::string, location_t> &getLocations() const; //new
 
 // Setters
     void                          setRoot(std::string root);

@@ -70,6 +70,11 @@ struct sockaddr_in  Server::getSocketAddress() const
     return (_socket_address);
 }
 
+const std::map<std::string, location_t> &Server::getLocations() const //new
+{
+    return _locations;
+}
+
 // ==============   Setters   ================ //
 void    Server::setRoot(std::string root)
 {
