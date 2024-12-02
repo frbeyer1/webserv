@@ -48,7 +48,6 @@ static  std::string lookupErrorMessage(int error_code)
     case  505: return "HTTP Version Not Supported";
     case  511: return "Network Authentication Required";
     default: return "Undefined";
-
     }
 }
 
@@ -78,20 +77,6 @@ std::string Response::getTimeAndDate(){
     oss << std::string(buffer) << " " << tzname[0] << std::endl;
     return oss.str();
 }
-
-// std::string Response::getType(HttpRequest &request){
-//     for (std::map<std::string, std::string>::const_iterator it = request.getHeaders().begin(); it != request.getHeaders().end(); it++){
-//         // std::cout << it->first << ":" << it->second << std::endl;
-//         if(it->first == "Accept")
-//         {
-//             size_t i = it->second.find(",");
-//             std::string type = it->second.substr(0,i);//if type invalid or missing.. return _code
-//             // std::cout << "type: " << type << std::endl;
-//             return(type);
-//         }
-//     }
-//     return(DEFAULT_type);//--
-// }
 
 std::string &Response::getResponseStr()
 {
@@ -209,13 +194,18 @@ std::string Response::_POSTmethod(HttpRequest &request, Server &server)
     // if other create new file in location or if exist put data depending of type in there
     // how does it work when user wants access to file again
     // messages -> "successfull upload, saving, etc..."
-    _contentPath = "docs/index.html";//-----------------
-    checkContent();
+    _contentPath = "docs/submit_success.html";//-----------------
+    _contentType = getMimeType(_contentPath);
+    _code = checkContent();
+    if(_code != 200)
+        return(_buildDefaultErrorPage(_code));
     oss << "HTTP/1.1 "<< _code <<" OK\r\n";
     oss << "Content-Type: "<< _contentType << "\r\n";
-    oss << "Content-Lenght: "<< _contentLength << "\r\n";
+    oss << "Content-Length: "<< _contentLength << "\r\n";
+    oss << "Date: "<< getTimeAndDate();
     oss << "\r\n";
     oss << _content;
+    oss << "\r\n";
     return (oss.str());
 }
 
@@ -240,8 +230,7 @@ std::string Response::_DELETEmethod()
 
 void    Response::buildResponse(HttpRequest &request, Server &server){
 
-    _code = request.getError();//<- valid?
-    // _contentType = getType(request);
+    _code = request.getError();
     if(_code != 200)
         _response_str = _buildDefaultErrorPage(_code);
     switch (request.getMethod())
