@@ -53,15 +53,17 @@ static  std::string lookupErrorMessage(int error_code)
 
 size_t Response::checkContent(){
     std::string tmp;
-    std::ifstream file(_contentPath.c_str());//-----------------
+    std::ifstream file(_contentPath.c_str(), std::ios::binary);//-----------------
 
     if (!file.is_open()) {
         std::cerr << "Error: Could not open the file." << std::endl;
         return (404);
     }
-    while (std::getline(file, tmp)) {
-        _content.append(tmp);
-    }
+
+    std::ostringstream oss;
+    oss << file.rdbuf();
+    _content = oss.str();
+
     file.close();
     _contentLength = _content.length();
     return(200);
