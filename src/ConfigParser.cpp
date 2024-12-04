@@ -73,7 +73,7 @@ static void handleRoot(std::string parameter, Server &server)
         exit(EXIT_FAILURE);
     }
     if (S_ISDIR(buf.st_mode))
-        server.setRoot(parameter);
+        server.setRoot(parameter); 
     else
     {
         Logger::log(RED, ERROR, "Config file misconfigured: root directive: is no directory");
@@ -229,14 +229,7 @@ static void handleErrorPage(std::string parameter, Server &server)
             }
         }
         else
-        {
-            if (i == 4 && parameter[i] != '/')
-            {
-                Logger::log(RED, ERROR, "Config file misconfigured: error_page directive: missing '/' infront of path");
-                exit(EXIT_FAILURE);
-            }
             page_path.push_back(parameter[i]);
-        }
     }
     page_path = server.getRoot() + page_path;
     if (stat(page_path.c_str(), &buf) != 0 || S_ISREG(buf.st_mode) == 0)
@@ -405,8 +398,33 @@ work in progress ...
 */
 static void handleCgi(std::string parameter, location_t &location)
 {
-    (void)parameter;
-    (void)location;
+    std::string extension, path;
+    size_t i = 0;
+
+    if (parameter[0] != '.')
+    {
+        Logger::log(RED, ERROR, "Config file misconfigured: cgi directive: expected '.' for the extension");
+        exit(EXIT_FAILURE);
+    }
+    while (i < parameter.size())
+    {
+        if (isspace(parameter[i]))
+            break ;
+        extension.push_back(parameter[i]);
+        i++;
+    }
+    if (!isspace(parameter[i]))
+    {
+        Logger::log(RED, ERROR, "Config file misconfigured: cgi directive: missing space after extension");
+        exit(EXIT_FAILURE);
+    }
+    i++;
+    while (i < parameter.size())
+    {
+        path.push_back(parameter[i]);
+        i++;
+    }
+    location.cgi.insert(std::make_pair(extension, path));
 }
 
 // ======   Private member functions   ======= //
@@ -586,10 +604,11 @@ void    ConfigParser::_getLocation(Server &server)
     location_t  location;
     std::string parameter;
     std::string path;
+    bool        not_empty = false;
 
     std::memset(&location.allowed_methods, 0, sizeof(allowed_methods_t));
     std::memset(&location.autoindex, 0, sizeof(bool));
-    path = server.getRoot() + _getLocationPath();
+    path = _getLocationPath();
     _skipWhiteSpaces();
     if (_content[_i] != '{')
     {
@@ -605,6 +624,7 @@ void    ConfigParser::_getLocation(Server &server)
         type = _getDirectiveType();
         _skipWhiteSpaces();
         parameter = _getParameter();
+        not_empty = true;
         switch (type) {
 
         case ALLOWED_METHODS:
@@ -639,7 +659,8 @@ void    ConfigParser::_getLocation(Server &server)
         exit(EXIT_FAILURE);
     }
     _i++;
-    server.setLocation(path, location);
+    if (not_empty)
+        server.setLocation(path, location);
 }
 
 /*

@@ -174,20 +174,17 @@ void    ServerManager::_sendResponse(Client &client)
     int bytes_send = 0;
     int fd = client.getClientFd();
 
-    std::string &response = client.response.getResponseStr();
+    const std::string &response = client.response.getResponse();
 
     bytes_send = write(fd, response.c_str(), response.size());
     if (bytes_send < 0)
     {
         Logger::log(RED, ERROR, "Write error on fd %i", fd);
         _closeConnection(fd);
-        // needs to clear the client in the end but needs to return here
+        return ;
     }
-
-    Logger::log(CYAN, INFO, "Send Response to Client fd %i with Code[%i]", client.getClientFd(), client.response.getCode());
-    
-    std::map<std::string, std::string>::const_iterator it = client.request.getHeaders().find("Connection");
-    if(it != client.request.getHeaders().end() && it->second == "keep-alive")
+    Logger::log(CYAN, INFO, "Send Response to Client fd %i with Code[%i]", client.getClientFd(), client.response.getError());
+    if (client.response.getConnection() == "keep-alive")
     {
         struct epoll_event event;
 
@@ -198,13 +195,11 @@ void    ServerManager::_sendResponse(Client &client)
             Logger::log(RED, ERROR, "Changing settings associated with fd in epoll instance failed");
             exit(EXIT_FAILURE);
         }
+        client.response.clear();
+        client.request.clear();
     }
     else
-    {
-        // Logger:log
         _closeConnection(fd);
-    }
-    client.request.clear();
 }
 
 // ==========   Member functions   =========== //

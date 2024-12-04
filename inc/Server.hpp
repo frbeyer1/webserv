@@ -16,7 +16,7 @@ typedef struct location_s
     std::string                         alias;
     std::string                         index;
     std::string                         upload;
-    // std::map<std::string, std::string>  cgi;
+    std::map<std::string, std::string>  cgi;
     bool                                autoindex;
 }           location_t;
 
@@ -30,7 +30,7 @@ private:
     std::string                         _root;
     size_t                              _client_max_body_size;
     std::map<int, std::string>          _error_pages;
-    std::map<std::string, location_t>   _locations; //new
+    std::map<std::string, location_t>   _locations;
     int                                 _server_fd;
     struct sockaddr_in                  _socket_address;
 

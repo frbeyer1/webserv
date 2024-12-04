@@ -2,35 +2,39 @@
 
 #include "Webserv.hpp"
 
-#define DEFAULT_type "text/html"
-
 class Response
 {
     private:
-
-        std::string _file;
-        std::string _contentPath;
-        std::string _response_str;
+        int         _error;
+        std::string _response;
+        std::string _connection;
         std::string _content;
-        std::string _contentType;
-        size_t      _contentLength;
-        size_t      _code;
+        std::string _content_type;
+        std::string _date;
+        std::string _location;
 
-        // MIME TYPE??
-        std::string _buildDefaultErrorPage(int error_code);
-        std::string _GETmethod(HttpRequest &request, Server &server);
-        std::string _POSTmethod(HttpRequest &request, Server &server);
-        std::string _DELETEmethod();
+    // Private member functions 
+        void    _setConnection(HttpRequest& request);
+        void    _setErrorPage(Server &server);
+        void    _buildResponseStr(HttpRequest &request, Server &sever);
+        void    _handleGet(HttpRequest &request, Server &server);
+        void    _handlePost(HttpRequest &request, Server &server);
+        void    _handleDelete(HttpRequest &request, Server &server);
 
     public:
+    // Constructor
         Response();
-        ~Response();
-        void        buildResponse(HttpRequest &request, Server &server);
-        size_t      checkContent();
     
-        std::string getTargetFile();
-        std::string getType(HttpRequest &request);
-        std::string getTimeAndDate();
-        std::string &getResponseStr();
-        size_t      getCode();
+    // Decosntructor
+        ~Response();
+    
+    // Getters
+        int                 getError() const;
+        const std::string   &getResponse() const;
+        const std::string   &getConnection() const;
+
+    // Member functions
+        void        buildResponse(HttpRequest &request, Server &server);
+        void        clear();
+    
 };

@@ -4,6 +4,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <dirent.h>
 
 #include <sys/socket.h>
 #include <sys/epoll.h>
@@ -55,9 +56,11 @@
 /*   HTTP Error Codes   */
 #define OK                                          200
 #define NO_CONTENT                                  204
+#define MOVED_PERMANENTLY                           301
 #define BAD_REQUEST                                 400
 #define FORBIDDEN                                   403
 #define NOT_FOUND                                   404
+#define NOT_ALLOWED                                 405
 #define PAYLOAD_TOO_LARGE                           413
 #define URI_TOO_LONG                                414
 #define REQUEST_HEADER_FIELDS_TOO_LARGE             431

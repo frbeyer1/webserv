@@ -197,7 +197,6 @@ static void    trimFieldValueStr(std::string &string)
 }
 
 // ==========   Member functions   =========== //
-
 /*
 clears and resets all variables (except _client_max_body_size) in the object
 */

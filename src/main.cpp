@@ -30,14 +30,13 @@ int main(int argc, char **argv)
 // -    if exit (need to close all open fds?)
 
 // config parser:
-// -    cgi
-// -    what if location directive is empty
-// -    max config lenght???
+// -    check cgi path (execute rights) and if cgi to the extension exists
 
 // HttpRequestParser:
 // -    parse the chunk extensions and trailer section or keep ignoring ???
 // -    do Percent decoding ???
 
 // Response
+// -    send gif -> loads too long
 // -    check for one and a valid host header(if not -> 400 bad request) read rfc for more detail
 // -    do we sent the response in packets ? or chuncked or at once

@@ -3,20 +3,46 @@
 // =============   Constructor   ============= //
 Response::Response()
 {
-    _contentLength = 0;
-    _code = 0;
+    _response = "";
+    _error = OK;
+    _connection = "";
+    _content = "";
+    _content_type = "";
+    _date = "";
+    _location = "";
 }
 
 // ============   Deconstructor   ============ //
-Response::~Response(){}
+Response::~Response()
+{
+
+}
+
+// ==============   Getters   ================ //
+const std::string &Response::getResponse() const
+{
+    return (_response);
+}
+
+int Response::getError() const
+{
+    return (_error);
+}
+
+const std::string &Response::getConnection() const
+{
+    return (_connection);
+}
 
 // ================   Utils   ================ //
-
-
+/*
+returns an string accordingly to the error_code
+*/
 static  std::string lookupErrorMessage(int error_code)
 {
     switch (error_code) {
-
+    case  200: return "OK";
+    case  301: return "Moved Permanently";
     case  400: return "Bad Request";
     case  401: return "Unauthorized";
     case  402: return "Payment Required";
@@ -51,44 +77,31 @@ static  std::string lookupErrorMessage(int error_code)
     }
 }
 
-size_t Response::checkContent(){
-    std::string tmp;
-    std::ifstream file(_contentPath.c_str(), std::ios::binary);//-----------------
+/*
+reads the file with the given path in binary mode and returns its content as a string
+*/
+static std::string    readFile(std::string path)
+{
+    std::ifstream   file(path.c_str(), std::ios::binary);
+    std::string     content;
 
-    if (!file.is_open()) {
-        std::cerr << "Error: Could not open the file." << std::endl;
-        return (404);
+    if (!file.is_open())
+    {
+        Logger::log(RED, ERROR, "Failed opening the file: %s", path);
+        exit (EXIT_FAILURE);
     }
 
     std::ostringstream oss;
     oss << file.rdbuf();
-    _content = oss.str();
+    content = oss.str();
 
     file.close();
-    _contentLength = _content.length();
-    return(200);
+    return (content);
 }
 
-std::string Response::getTimeAndDate(){
-    std::ostringstream  oss;
-    time_t now = time(0);
-    tm* localTime = localtime(&now);
-    tzset();
-    char buffer[80];
-    strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S", localTime);
-    oss << std::string(buffer) << " " << tzname[0] << std::endl;
-    return oss.str();
-}
-
-std::string &Response::getResponseStr()
-{
-    return (_response_str);
-}
-
-size_t Response::getCode(){
-    return (_code);
-}
-
+/*
+return an string for the content-type header corresponding to the requested file extension
+*/
 static std::string getMimeType(const std::string& filename)
 {
     size_t dotPos = filename.find_last_of(".");
@@ -120,10 +133,22 @@ static std::string getMimeType(const std::string& filename)
     return "application/octet-stream";
 }
 
-// ======   Private member functions   ======= //
+/*
+returns an string with the current date and time
+*/
+static std::string getCurrentDateTime()
+{
+    time_t now = time(0);
+    struct tm* timeinfo = gmtime(&now);
+    char buffer[80];
+    strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S GMT", timeinfo);
+    return std::string(buffer);
+}
 
-// ERROR PAGE
-std::string Response::_buildDefaultErrorPage(int error_code)
+/*
+build and returns an default html error page with the error_code
+*/
+static std::string _buildDefaultErrorPage(int error_code)
 {
     std::ostringstream  oss;
 
@@ -134,120 +159,275 @@ std::string Response::_buildDefaultErrorPage(int error_code)
     return (oss.str());
 }
 
-        // for (std::map<std::string, location_t>::const_iterator it = server.getLocations().begin(); it != server.getLocations().end(); it++){
-        //     std::cout << "Key: " << it->first << std::endl;
-        //     // std::cout << "  allowed_methods: " << it->second.allowed_methods << std::endl;
-        //     std::cout << "  redirection: " << it->second.redirection << std::endl;
-        //     std::cout << "  alias: " << it->second.alias << std::endl;
-        //     std::cout << "  index: " << it->second.index << std::endl;
-        //     std::cout << "  upload: " << it->second.upload << std::endl;
-        //     std::cout << "  autoindex: " << (it->second.autoindex ? "true" : "false") << std::endl;
-        //     std::cout << std::endl;
-        // }
-// GET
-std::string Response::_GETmethod(HttpRequest &request, Server &server)
+/*
+builds an html autoindex and returns it as a string
+*/
+static std::string buildAutoindex(std::string path_with_root, std::string path)
 {
-    std::ostringstream  oss;
-
-    if(request.getPath() == "/")
-    {
-        if (!server.getLocations().begin()->second.index.empty())
-            _contentPath =  server.getLocations().begin()->second.index;
-        else if(server.getLocations().begin()->second.autoindex == true)
-            _contentPath = server.getRoot() + "autoindex.html"; //check autoindex format?
-        else
-            return(_buildDefaultErrorPage(404));
+    std::vector<std::string> files;
+    DIR* dir = opendir(path_with_root.c_str());
+    if (dir) {
+        struct dirent* entry;
+        while ((entry = readdir(dir)) != NULL) {
+            files.push_back(entry->d_name);
+        }
+        closedir(dir);
     }
-    // else if(request.getPath().find("/cgi-bin") != std::string::npos)
-        // CgiHandler   cgi(request, server);
-        // size_t       i = request.getPath().find("/cgi-bin/");
-        // std::string  cgi_program = request.getPath().substr(i,npos);
-        // allowed methods -> check in cgi
-    else if (!server.getRoot().empty() && !request.getPath().empty())
-        _contentPath = server.getRoot() + request.getPath();
+    std::ostringstream  oss;
+    oss << "<!DOCTYPE html><html><head><title>Index of " << path << "</title></head><body><h1>Index of " << path << "</h1><hr><pre>";
+    for (size_t i = 0; i < files.size(); ++i)
+    {
+        struct stat file_info;
+        std::string full_path = path_with_root + "/" + files[i];
+        if (stat(full_path.c_str(), &file_info) == 0)
+        {
+            oss << "<a href=\"";
+            if (S_ISDIR(file_info.st_mode))
+                oss << files[i] << '/';
+            else
+                oss << files[i];
+            oss << "\">" << files[i] << "</a>" << "\t\t" << file_info.st_size << " bytes\n";
+        }
+    }
+    oss << "</pre><hr></body></html>";
+    return (oss.str());
+}
+
+// ======   Private member functions   ======= //
+/*
+sets _connection either to 'close' or 'keep-alive' dependinfg on _error and client request
+*/
+void Response::_setConnection(HttpRequest& request)
+{
+    _connection = "close";
+    if (_error == OK)
+    {
+        std::map<std::string, std::string>::const_iterator it = request.getHeaders().find("Connection");
+        if(it != request.getHeaders().end() && it->second == "keep-alive")
+        {
+            _connection = "keep-alive";
+            return ;
+        } 
+    }
+    return ;
+}
+
+/*
+searches for custom error page or uses default error page to setuo _content string
+*/
+void Response::_setErrorPage(Server &server)
+{
+    std::map<int, std::string> error_pages = server.getErrorPages();
+
+    if (error_pages.count(_error))
+    {
+        _content = readFile(error_pages[_error]);
+        _content_type = getMimeType(error_pages[_error]);
+    }
     else
-        return(_buildDefaultErrorPage(404));
-    _contentType = getMimeType(_contentPath);
-    _code = checkContent();
-    if(_code != 200)
-        return(_buildDefaultErrorPage(_code));
-    oss << "HTTP/1.1 "<< _code <<" OK\r\n";
-    oss << "Content-Type: "<< _contentType << "\r\n";
-    oss << "Content-Length: "<< _contentLength << "\r\n";
-    oss << "Date: "<< getTimeAndDate();
-    oss << "\r\n";
-    oss << _content;
-    oss << "\r\n";
-    return (oss.str());
+    {
+        _content = _buildDefaultErrorPage(_error);
+        _content_type = "text/html";
+    }
 }
 
-// POST
-std::string Response::_POSTmethod(HttpRequest &request, Server &server)
+/*
+handles an GET Request and sets all needed headers
+*/
+void Response::_handleGet(HttpRequest &request, Server &server)
 {
-    std::ostringstream  oss;
+    if (_error != OK)
+        return ;
 
-    (void)server;
+    std::string path = request.getPath();
+    const std::map<std::string, location_t> locations = server.getLocations();
+    std::map<std::string, location_t>::const_iterator location_it = locations.end();
+
+    size_t size = 0;
+    // search for location
+    for (std::map<std::string, location_t>::const_iterator it = locations.begin(); it != locations.end(); it++)
+    {
+        if (path == it->first)
+        {
+            location_it = it;
+            break ;
+        }
+        else if (path.compare(0, it->first.size(), it->first) == 0)
+        {
+            if (it->first.size() > size)
+            {
+                location_it = it;
+                size = it->first.size();
+            }
+        }
+    }
+    // no location found
+    if (location_it == locations.end())
+    {
+        _error = NOT_FOUND;
+        return ;
+    }
+    // checks if GET is allowed
+    if (location_it->second.allowed_methods.allow_get == false)
+    {
+        _error = NOT_ALLOWED;
+        return ;
+    }
+    // check for redirection
+    if (location_it->second.redirection != "")
+    {
+        _error = MOVED_PERMANENTLY;
+        _location = location_it->second.redirection;
+        return ;
+    }
+    // check if targt is there
+    std::string full_path, root;
+    root = server.getRoot();
+    root.erase(root.size() - 1);
+    if (location_it->second.alias != "")
+    {
+        size_t pos = path.find(location_it->first);
+
+        if (pos != std::string::npos)
+            path.replace(pos, location_it->first.size(), location_it->second.alias);
+        full_path = path;
+    }
+    else
+        full_path = root + path;
+    struct stat file_info;
+    // file does not exist
+    if (stat(full_path.c_str(), &file_info) != 0)
+    {
+        _error = NOT_FOUND;
+        return ;
+    }
+    // checks if targt is directory
+    if (S_ISDIR(file_info.st_mode))
+    {
+        // Path does not ends with "/" or "/$"
+        if (full_path[full_path.size() - 1] != '/' && full_path.compare(full_path.size() - 2, 2, "/$") != 0)
+        {
+            _error = NOT_FOUND;
+            return;
+        }
+        // check for index
+        if (location_it->second.index != "")
+        {
+            _content = readFile(location_it->second.index);
+            _content_type = getMimeType(location_it->second.index);
+            return ;
+        }
+        // check for autoindex
+        if (location_it->second.autoindex == false)
+        {
+            _error = FORBIDDEN;
+            return ;
+        }
+        else
+        {
+            _content = buildAutoindex(full_path, path);
+            _content_type = "text/html";
+            return ;
+        }
+    }
+    // checks if target is regular file
+    else if (S_ISREG(file_info.st_mode))
+    {
+        _content = readFile(full_path);
+        _content_type = getMimeType(full_path);
+        return ;
+    }
+    else
+    {
+        _error = NOT_FOUND;
+        return ;
+    }
+}
+
+/*
+handles an POST Request and sets all needed headers
+*/
+void Response::_handlePost(HttpRequest &request, Server &server)
+{
     (void)request;
-    // allowed methods -> check in cgi
-    // cgi
-    // check if upload location exitsts and method allowed, <-defined in config
-    // check if file to upload to exists
-    // if file upload -> move to location 
-    // if other create new file in location or if exist put data depending of type in there
-    // how does it work when user wants access to file again
-    // messages -> "successfull upload, saving, etc..."
-    _contentPath = "docs/submit_success.html";//-----------------
-    _contentType = getMimeType(_contentPath);
-    _code = checkContent();
-    if(_code != 200)
-        return(_buildDefaultErrorPage(_code));
-    oss << "HTTP/1.1 "<< _code <<" OK\r\n";
-    oss << "Content-Type: "<< _contentType << "\r\n";
-    oss << "Content-Length: "<< _contentLength << "\r\n";
-    oss << "Date: "<< getTimeAndDate();
-    oss << "\r\n";
-    oss << _content;
-    oss << "\r\n";
-    return (oss.str());
+    (void)server;
+    std::cout << "POST REQUEST" << std::endl;
 }
 
-// DELETE
-std::string Response::_DELETEmethod()
+/*
+handles an DELETE Request and sets all needed headers
+*/
+void Response::_handleDelete(HttpRequest &request, Server &server)
 {
-    std::ostringstream  oss;
-
-    // allowed methods
-    // cgi
-    _contentPath = "docs/index.html";//-----------------
-    checkContent();
-    oss << "HTTP/1.1 "<< _code <<" OK\r\n";
-    oss << "Content-Type: "<< _contentType << "\r\n";
-    oss << "Content-Lenght: "<< _contentLength << "\r\n";
-    oss << "\r\n";
-    oss << _content;
-    return (oss.str());
+    (void)request;
+    (void)server;
+    std::cout << "DELETE REQUEST" << std::endl;
 }
+
+/*
+builds the _response string with all needed headers and content
+*/
+void Response::_buildResponseStr(HttpRequest &request, Server &server)
+{
+    std::ostringstream oss;
+    
+    _setConnection(request);
+    if (_error != OK && _error != MOVED_PERMANENTLY)
+        _setErrorPage(server);
+    oss << "HTTP/1.1 " << _error << " " << lookupErrorMessage(_error) << "\r\n";
+    oss << "Server: Webserv\r\n";
+    oss << "Date: " << getCurrentDateTime() << "\r\n";
+    if (_content != "")
+        oss << "Content-Length: " << _content.size() << "\r\n";
+    if (_content_type != "")
+        oss << "Content-Type: " << _content_type << "\r\n";
+    if (_connection != "")
+        oss << "Connection: " << _connection << "\r\n";
+    if (_location != "")
+        oss << "Location: " << _location << "\r\n";
+    oss << "\r\n";
+    if (_content != "")
+        oss << _content << "\r\n";
+
+    _response = oss.str();
+}
+
 
 // ======   Public member functions   ======= //
+/*
+clear the response object
+*/
+void Response::clear()
+{
+    _response = "";
+    _error = OK;
+    _connection = "";
+    _content = "";
+    _content_type = "";
+    _date = "";
+    _location = "";
+}
 
-void    Response::buildResponse(HttpRequest &request, Server &server){
+/*
+builds the Response for the request of the client
+*/
+void Response::buildResponse(HttpRequest &request, Server &server)
+{
+    _error = request.getError();
+    switch (request.getMethod()) {
 
-    _code = request.getError();
-    if(_code != 200)
-        _response_str = _buildDefaultErrorPage(_code);
-    switch (request.getMethod())
-    {
-        case GET:
-            _response_str = _GETmethod(request, server);
-            break;
-        case POST:
-            _response_str = _POSTmethod(request, server);
-            break;
-        case DELETE:
-            _response_str = _DELETEmethod();
-            break;
-        default:
-                std::cout << "No method" << std::endl;
-            break;
-    };
-};
+    case GET:
+        _handleGet(request, server);
+        break;
+    case POST:
+        _handlePost(request, server);
+        break;
+    case DELETE:
+        _handleDelete(request, server);
+        break;
+    default:
+        // ???
+        break;
+    }
+    _buildResponseStr(request, server);
+}
