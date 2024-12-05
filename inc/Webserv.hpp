@@ -47,8 +47,8 @@
 #define MAX_EPOLL_EVENTS                            10
 #define MAX_CONNECTIONS                             10
 #define BACKLOG                                     128
-#define MAX_URI_LENGHT                              4096
-#define MAX_HEADER_LENGHT                           8192
+#define MAX_URI_LENGTH                              4096
+#define MAX_HEADER_LENGTH                           8192
 #define CLIENT_CONNECTION_TIMEOUT                   10
 #define REQUEST_READ_SIZE                           4096
 #define RESPONSE_WRITE_SIZE                         4096

@@ -97,7 +97,7 @@ static void handleListen(std::string parameter, Server &server)
         if (parameter[i] == ':')
         {
             found_host = true;
-            if (parameter.compare(0, i, "localhost:") == 0)
+            if (parameter.compare(0, i, "localhost") == 0)
                 ip_str = "127.0.0.1";
             else
                 ip_str = parameter.substr(0, i);

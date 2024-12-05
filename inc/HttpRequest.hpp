@@ -36,9 +36,9 @@ enum ParsingState
     Header_Field_Value,
     Header_Field_End,
     Header_Field_Blank_Line,
-    Chunk_Lenght,
+    Chunk_Length,
     Chunk_Extensions,
-    Chunk_Lenght_End,
+    Chunk_Length_End,
     Chunk_Data,
     Chunk_Data_CR,
     Chunk_Data_LF,
@@ -65,7 +65,7 @@ private:
     std::string                                     _method_str;
     std::string                                     _header_field_name;
     std::string                                     _header_field_value;
-    std::string                                     _chunk_lenght_str;
+    std::string                                     _chunk_length_str;
     std::stringstream                               _ss;
     size_t                                          _uri_len;
     size_t                                          _header_len;

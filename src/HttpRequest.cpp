@@ -25,7 +25,7 @@ HttpRequest::HttpRequest(const HttpRequest &rhs) : _ss(rhs._ss.str())
         _method_str = rhs._method_str;
         _header_field_name = rhs._header_field_name;
         _header_field_value = rhs._header_field_value;
-        _chunk_lenght_str = rhs._chunk_lenght_str;
+        _chunk_length_str = rhs._chunk_length_str;
         _uri_len = rhs._uri_len;
         _header_len = rhs._header_len;
         _body_len = rhs._body_len;
@@ -214,7 +214,7 @@ void    HttpRequest::clear()
     _method_str = "";
     _header_field_name = "";
     _header_field_value = "";
-    _chunk_lenght_str = "";
+    _chunk_length_str = "";
     _uri_len = 0;
     _header_len = 0;
     _body_len = 0;
@@ -301,7 +301,7 @@ void    HttpRequest::parse(uint8_t *data, size_t size)
                     _error = BAD_REQUEST;
                     return;
                 }
-                else if (_uri_len > MAX_URI_LENGHT)
+                else if (_uri_len > MAX_URI_LENGTH)
                 {
                     _error = URI_TOO_LONG;
                     return;
@@ -328,7 +328,7 @@ void    HttpRequest::parse(uint8_t *data, size_t size)
                     _error = BAD_REQUEST;
                     return;
                 }
-                else if (_uri_len > MAX_URI_LENGHT)
+                else if (_uri_len > MAX_URI_LENGTH)
                 {
                     _error = URI_TOO_LONG;
                     return;
@@ -350,7 +350,7 @@ void    HttpRequest::parse(uint8_t *data, size_t size)
                     _error = BAD_REQUEST;
                     return;
                 }
-                else if (_uri_len > MAX_URI_LENGHT)
+                else if (_uri_len > MAX_URI_LENGTH)
                 {
                     _error = URI_TOO_LONG;
                     return;
@@ -460,7 +460,7 @@ void    HttpRequest::parse(uint8_t *data, size_t size)
             }
             _header_field_name.push_back(ch);
             _header_len++;
-            if (_header_len > MAX_HEADER_LENGHT)
+            if (_header_len > MAX_HEADER_LENGTH)
             {
                 _error = REQUEST_HEADER_FIELDS_TOO_LARGE;
                 return;
@@ -480,7 +480,7 @@ void    HttpRequest::parse(uint8_t *data, size_t size)
             }
             _header_field_name.push_back(ch);
             _header_len++;
-            if (_header_len > MAX_HEADER_LENGHT)
+            if (_header_len > MAX_HEADER_LENGTH)
             {
                 _error = REQUEST_HEADER_FIELDS_TOO_LARGE;
                 return;
@@ -504,7 +504,7 @@ void    HttpRequest::parse(uint8_t *data, size_t size)
             }
             _header_field_value.push_back(ch);
             _header_len++;
-            if (_header_len > MAX_HEADER_LENGHT)
+            if (_header_len > MAX_HEADER_LENGTH)
             {
                 _error = REQUEST_HEADER_FIELDS_TOO_LARGE;
                 return;
@@ -546,7 +546,7 @@ void    HttpRequest::parse(uint8_t *data, size_t size)
                 {
                     _body_flag = true;
                     _chunked_transfer_flag = true;
-                    _state = Chunk_Lenght;
+                    _state = Chunk_Length;
                 }
                 else
                 {
@@ -554,14 +554,14 @@ void    HttpRequest::parse(uint8_t *data, size_t size)
                     return;
                 }
             }
-            if (_headers.count("Content-Lenght"))
+            if (_headers.count("Content-Length"))
             {
                 if (_chunked_transfer_flag == true)
                 {
                     _error = BAD_REQUEST;
                     return;
                 }
-                _body_len = atoi(_headers["Content-Lenght"].c_str());
+                _body_len = atoi(_headers["Content-Length"].c_str());
                 if (_body_len <= 0)
                 {
                     _error = BAD_REQUEST;
@@ -579,14 +579,14 @@ void    HttpRequest::parse(uint8_t *data, size_t size)
                 }   
             }
             break;
-        case Chunk_Lenght:
+        case Chunk_Length:
             _body_len++;
             if (ch == CR)
-                _state = Chunk_Lenght_End;
+                _state = Chunk_Length_End;
             else if (ch == ';')
                 _state = Chunk_Extensions;
             else if (isxdigit(ch))
-                _chunk_lenght_str.push_back(ch);
+                _chunk_length_str.push_back(ch);
             else
             {
                 _error = BAD_REQUEST;
@@ -602,14 +602,14 @@ void    HttpRequest::parse(uint8_t *data, size_t size)
             // ignores the extensions
             _body_len++;
             if (ch == CR)
-                _state = Chunk_Lenght_End;
+                _state = Chunk_Length_End;
             if (_body_len > _client_max_body_size)
             {
                 _error = PAYLOAD_TOO_LARGE;
                 return;
             }
             break;
-        case Chunk_Lenght_End:
+        case Chunk_Length_End:
             _body_len++;
             if (ch != '\n')
             {
@@ -624,7 +624,7 @@ void    HttpRequest::parse(uint8_t *data, size_t size)
             _state = Chunk_Data;
             _ss.str("");
             _ss.clear();
-            _ss << _chunk_lenght_str;
+            _ss << _chunk_length_str;
             _ss >> std::hex >> _chunk_len;
             if (_chunk_len == 0)
                 _state = Chunk_Last_CR;
@@ -669,7 +669,7 @@ void    HttpRequest::parse(uint8_t *data, size_t size)
                 _error = PAYLOAD_TOO_LARGE;
                 return;
             }
-            _state = Chunk_Lenght;
+            _state = Chunk_Length;
             _body_len++;
             break;
         case Chunk_Last_CR:

@@ -248,7 +248,7 @@ std::string Response::_DELETEmethod()
     checkContent();
     oss << "HTTP/1.1 "<< _code <<" OK\r\n";
     oss << "Content-Type: "<< _contentType << "\r\n";
-    oss << "Content-Lenght: "<< _contentLength << "\r\n";
+    oss << "Content-Length: "<< _contentLength << "\r\n";
     oss << "\r\n";
     oss << _content;
     return (oss.str());
