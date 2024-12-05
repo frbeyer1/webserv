@@ -152,9 +152,10 @@ static std::string _buildDefaultErrorPage(int error_code)
 {
     std::ostringstream  oss;
 
-    oss << "<!DOCTYPE html><html><head><title>Error</title></head><center><h1>";
-    oss << error_code << " " << lookupErrorMessage(error_code);
-    oss << "</h1></center><hr><center>webserv</center></body></html>";
+    oss << "<!DOCTYPE html><html><head><title>Error</title></head><body><center><h1>Error ";
+    oss << lookupErrorMessage(error_code); 
+    oss << "</h1><p>" << (error_code);
+    oss << ".</p></center></body></html>";
     return (oss.str());
 }
 
@@ -379,11 +380,12 @@ void Response::_handlePost(HttpRequest &request, Server &server)
         return ;
     }
     // checks if POST is allowed
-    if (location_it->second.allowed_methods.allow_post == false)
-    {
-        _error = NOT_ALLOWED;
-        return ;
-    }
+    // if (location_it->second.allowed_methods.allow_post == false) wroooooooongg ------------------------------
+    // {
+    //     std::cout << "lolololo" << std::endl;
+    //     _error = NOT_ALLOWED;
+    //     return ;
+    // }
     // check for redirection
     if (location_it->second.redirection != "")
     {
@@ -391,7 +393,6 @@ void Response::_handlePost(HttpRequest &request, Server &server)
         _location = location_it->second.redirection;
         return ;
     }
-    std::cout<< path << std::endl;
     std::string full_path, root;
     root = server.getRoot();
     root.erase(root.size() - 1);
@@ -399,7 +400,7 @@ void Response::_handlePost(HttpRequest &request, Server &server)
     {
         size_t pos = path.find(location_it->first);
 
-        if (pos != std::string::npos)
+        if (pos != std::string::npos) 
             path.replace(pos, location_it->first.size(), location_it->second.alias);
         full_path = path;
     }
@@ -407,39 +408,76 @@ void Response::_handlePost(HttpRequest &request, Server &server)
         full_path = root + path;
     std::cout<< full_path << std::endl;
     struct stat file_info;
-    // checks if targt is directory
-    if (S_ISDIR(file_info.st_mode))
+    // set status code
+    // upload a file
+    if (stat(full_path.c_str(), &file_info) == 0 && S_ISDIR(file_info.st_mode))
     {
-        // check allowed methods
-        // get request body
-        // check if valid file
-        // check if file already exists
-        // save file to lacation
+        std::string filename;
+        size_t filename_start = request.getBody().find("filename") + 10;
+        if (filename_start != std::string::npos)
+        {
+            size_t filename_end = request.getBody().find('\"', filename_start);
+            if (filename_end != std::string::npos){
+                filename = request.getBody().substr(filename_start, filename_end - filename_start);
+                std::cout << filename << std::endl;
+            }
+            // else
+            //     _error = INVALID_FILE;
+            // return ;
+        }
+        // else
+        //     _error = INVALID_FILE;
+        // return ;
+        std::istringstream file_content(request.getBody());
+        std::string line;
+        size_t i = 0;
+        while(std::getline(file_content, line))
+        {
+            i++;
+            if(line == "\n")
+                std::cout << i << std::endl;
+        }//file content rausschreiben ab erstem absatz, erste line aus body maybe als boundary usen
+        // size_t contentStart = request.getBody().find("\n", 0);
+        // std::cout << request.getBody().substr(contentStart, request.getBody().length() - contentStart);
+        std::string filepath = full_path + "/" + filename;
+        std::ofstream outFile(filepath.c_str(), std::ios::binary);
+        if(outFile.is_open()){
+            outFile << request.getBody();
+            outFile.close();
+        }
+
+        std::cout << "dir" << std::endl;
+        // std::cout << request.getBody() << std::endl;
+        // set status code
+        //break
+        return;
     }
     // checks if target is regular file
     else 
     {   
-        if (S_ISREG(file_info.st_mode))
+        if (stat(full_path.c_str(), &file_info) == 0 && S_ISREG(file_info.st_mode))
         {
-            _content = readFile(full_path);
-            _content_type = getMimeType(full_path);
-            return ;
-            // check allowed methods
-            // getMimeType?
             // check if it can write to location
             // open file
+            std::cout << "file" << std::endl;
+            std::cout << request.getBody() << std::endl;
             // write to file
-
+            // set status code
+            //break
+            return;
         }
-        else
-            // check allowed methods
+        else{
+            std::cout << "create file" << std::endl;
             // return(_buildDefaultErrorPage(400));
             // create file
             // open and write to it 
             // if not working return error
+            // set status code
+            //break
             return ; 
+        }
     }
-    //get status codes and update content 
+    //get status status codes and update content
     std::cout << "POST REQUEST" << std::endl;
 }
 
