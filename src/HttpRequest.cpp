@@ -599,7 +599,7 @@ void    HttpRequest::parse(uint8_t *data, size_t size)
             }
             break;
         case Chunk_Extensions:
-            // ignores the extensions
+            // ignores the chunk extensions
             _body_len++;
             if (ch == CR)
                 _state = Chunk_Length_End;

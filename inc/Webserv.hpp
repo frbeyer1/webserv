@@ -31,7 +31,7 @@
 /*   Logger Settings   */
 #define DEFAULT_LOGGER_STATE                        ON              // ON or OFF
 #define DEFAULT_LOGGER_OUTPUT                       STDOUT          // STDOUT or OUT_FILE  
-#define DEFAULT_LOGGER_LEVEL                        DEBUG           // ERROR, INFO or DEBUG
+#define DEFAULT_LOGGER_LEVEL                        INFO            // ERROR, INFO or DEBUG
 #define LOGFILE_NAME                                "webserv.log"
 
 /*   Default Config Settings   */

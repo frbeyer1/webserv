@@ -152,10 +152,9 @@ static std::string _buildDefaultErrorPage(int error_code)
 {
     std::ostringstream  oss;
 
-    oss << "<!DOCTYPE html><html><head><title>Error</title></head><body><center><h1>Error ";
-    oss << lookupErrorMessage(error_code); 
-    oss << "</h1><p>" << (error_code);
-    oss << ".</p></center></body></html>";
+    oss << "<!DOCTYPE html><html><head><title>Error</title></head><center><h1>";
+    oss << error_code << " " << lookupErrorMessage(error_code);
+    oss << "</h1></center><hr><center>webserv</center></body></html>";
     return (oss.str());
 }
 

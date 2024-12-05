@@ -20,14 +20,13 @@ int main(int argc, char **argv)
     master.boot();
 }
 
-// ==============   TO DO   ================== //
+// ==============   TO DO   ================== // 
 
-//  add debug messages 
-
-// use read or recv and write or send ??? 
+// debug messasges (print request and response ???)
 
 // fds:
 // -    if exit (need to close all open fds?)
+// -    check leaks
 
 // config parser:
 // -    check cgi path (execute rights) and if cgi to the extension exists
@@ -40,3 +39,4 @@ int main(int argc, char **argv)
 // -    send gif -> loads too long
 // -    check for one and a valid host header(if not -> 400 bad request) read rfc for more detail
 // -    do we sent the response in packets ? or chuncked or at once
+

@@ -21,7 +21,7 @@ static void    addToEpollInstance(int epoll_fd, int add_fd)
     event.data.fd = add_fd;
     if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, add_fd, &event) == -1)
     {
-        Logger::log(RED, ERROR, "adding to epoll instance failed");
+        Logger::log(RED, ERROR, "adding fd[%i] to epoll instance failed", add_fd);
         exit(EXIT_FAILURE);
     }
 }
@@ -69,7 +69,7 @@ void    ServerManager::_acceptNewConnection(int server_fd)
         _client_map.erase(client_fd);
     _client_map.insert(std::make_pair(client_fd, client));
     addToEpollInstance(_epoll_fd, client_fd);
-    Logger::log(CYAN, INFO, "Accpted new Connection from %s, on fd %i", sockaddrToIpString(client.getClientAddress()).c_str(), client_fd);
+    Logger::log(CYAN, INFO, "Accpted new connection on fd[%i] from %s", client_fd, sockaddrToIpString(client.getClientAddress()).c_str());
 }
 
 /*
@@ -82,16 +82,16 @@ void    ServerManager::_closeConnection(int fd)
 {
     if (epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, fd, NULL) == -1)
     {
-        Logger::log(RED, ERROR, "Deleting from epoll instance failed");
+        Logger::log(RED, ERROR, "Deleting fd[%i] from epoll instance failed", fd);
         exit(EXIT_FAILURE);
     }
     if (close(fd))
     {
-        Logger::log(RED, ERROR, "Closing fd %i failed", fd);
+        Logger::log(RED, ERROR, "Closing fd[%i] failed", fd);
         exit(EXIT_FAILURE);
     }
     _client_map.erase(fd);
-    Logger::log(CYAN, INFO, "Closed Connection %i", fd);
+    Logger::log(CYAN, INFO, "Closed connection on fd[%i]", fd);
 }
 
 /*
@@ -128,13 +128,13 @@ void    ServerManager::_readRequest(Client &client)
     bytes_read = read(fd, buffer, REQUEST_READ_SIZE);
     if (bytes_read == 0)
     {
-        Logger::log(CYAN, INFO, "Client %i Closed Connection", fd);
+        Logger::log(CYAN, INFO, "Client fd[%i] closed connection", fd);
         _closeConnection(fd);
         return ;
     }
     if (bytes_read < 0)
     {
-        Logger::log(RED, ERROR, "Read error on fd %i", fd);
+        Logger::log(RED, ERROR, "Read error on fd[%i]", fd);
         _closeConnection(fd);
         return ;
     }
@@ -149,15 +149,16 @@ void    ServerManager::_readRequest(Client &client)
     {
         Server *ptr = client.server;
 
-        Logger::log(CYAN, INFO, "Request recived from Client fd %i with Method[%s] and URI[%s]", fd, client.request.getMethodStr().c_str(), client.request.getPath().c_str());
+        Logger::log(CYAN, INFO, "Request received from client fd[%i] with method[%s] and URI[%s]", fd, client.request.getMethodStr().c_str(), client.request.getPath().c_str());
         client.response.buildResponse(client.request, *ptr);
+        Logger::log(GREY, DEBUG, "Finished response building");
         struct epoll_event event;
 
         event.events = EPOLLOUT;
         event.data.fd = fd;
         if (epoll_ctl(_epoll_fd, EPOLL_CTL_MOD, fd, &event))
         {
-            Logger::log(RED, ERROR, "Changing settings associated with fd in epoll instance failed");
+            Logger::log(RED, ERROR, "Changing settings associated with fd[%i] in epoll instance failed", fd);
             exit(EXIT_FAILURE);
         }
     }
@@ -179,11 +180,11 @@ void    ServerManager::_sendResponse(Client &client)
     bytes_send = write(fd, response.c_str(), response.size());
     if (bytes_send < 0)
     {
-        Logger::log(RED, ERROR, "Write error on fd %i", fd);
+        Logger::log(RED, ERROR, "Write error on fd[%i]", fd);
         _closeConnection(fd);
         return ;
     }
-    Logger::log(CYAN, INFO, "Send Response to Client fd %i with Code[%i]", client.getClientFd(), client.response.getError());
+    Logger::log(CYAN, INFO, "Response send to client fd[%i] with code[%i]", client.getClientFd(), client.response.getError());
     if (client.response.getConnection() == "keep-alive")
     {
         struct epoll_event event;
@@ -192,7 +193,7 @@ void    ServerManager::_sendResponse(Client &client)
         event.data.fd = fd;
         if (epoll_ctl(_epoll_fd, EPOLL_CTL_MOD, fd, &event))
         {
-            Logger::log(RED, ERROR, "Changing settings associated with fd in epoll instance failed");
+            Logger::log(RED, ERROR, "Changing settings associated with fd[%i] in epoll instance failed", _epoll_fd);
             exit(EXIT_FAILURE);
         }
         client.response.clear();
@@ -264,7 +265,6 @@ void    ServerManager::boot()
         addToEpollInstance(_epoll_fd, it->second.getServerFd());
         it->second.startListening();
     }
-
     // main server loop
     struct epoll_event event_list[MAX_EPOLL_EVENTS];
 

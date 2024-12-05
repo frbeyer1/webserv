@@ -394,7 +394,7 @@ static void handleUpload(std::string parameter, location_t &location, Server &se
 }
 
 /*
-work in progress ...
+sets cgi path and extension to the location
 */
 static void handleCgi(std::string parameter, location_t &location)
 {
