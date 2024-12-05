@@ -6,21 +6,12 @@
     <title>Registration Page</title>
 </head>
 <body>
-    <header>
-        <h1>Register Here</h1>
-    </header>
-
-    <main>
-        <form action="/submit_registration" method="POST"> <!-- Change action URL as needed -->
-            <label for="username">Username:</label>
-            <input type="text" id="username" name="username" required><br><br>
-
-            <input type="submit" value="Register">
-        </form>
-    </main>
-
-    <footer>
-        <p>&copy; 2024 Your Website Name</p>
-    </footer>
+    <h1>Register Here</h1>
+    <form action="/user/data" method="POST">
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" required><br><br>
+        <input type="submit" value="Register">
+    </form>
+    <p>&copy; 2024 Your Website Name</p>
 </body>
 </html>

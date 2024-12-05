@@ -247,8 +247,19 @@ void Response::_handleGet(HttpRequest &request, Server &server)
     // search for location
     for (std::map<std::string, location_t>::const_iterator it = locations.begin(); it != locations.end(); it++)
     {
+        for (std::map<std::string, location_t>::const_iterator it = server.getLocations().begin(); it != server.getLocations().end(); it++){
+            std::cout << "Key: " << it->first << std::endl;
+            // std::cout << "  allowed_methods: " << it->second.allowed_methods << std::endl;
+            std::cout << "  redirection: " << it->second.redirection << std::endl;
+            std::cout << "  alias: " << it->second.alias << std::endl;
+            std::cout << "  index: " << it->second.index << std::endl;
+            std::cout << "  upload: " << it->second.upload << std::endl;
+            std::cout << "  autoindex: " << (it->second.autoindex ? "true" : "false") << std::endl;
+            std::cout << std::endl;
+        }
         if (path == it->first)
         {
+            std::cout << it->first <<std::endl;
             location_it = it;
             break ;
         }
