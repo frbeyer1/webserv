@@ -247,19 +247,8 @@ void Response::_handleGet(HttpRequest &request, Server &server)
     // search for location
     for (std::map<std::string, location_t>::const_iterator it = locations.begin(); it != locations.end(); it++)
     {
-        for (std::map<std::string, location_t>::const_iterator it = server.getLocations().begin(); it != server.getLocations().end(); it++){
-            std::cout << "Key: " << it->first << std::endl;
-            // std::cout << "  allowed_methods: " << it->second.allowed_methods << std::endl;
-            std::cout << "  redirection: " << it->second.redirection << std::endl;
-            std::cout << "  alias: " << it->second.alias << std::endl;
-            std::cout << "  index: " << it->second.index << std::endl;
-            std::cout << "  upload: " << it->second.upload << std::endl;
-            std::cout << "  autoindex: " << (it->second.autoindex ? "true" : "false") << std::endl;
-            std::cout << std::endl;
-        }
         if (path == it->first)
         {
-            std::cout << it->first <<std::endl;
             location_it = it;
             break ;
         }
@@ -360,8 +349,98 @@ handles an POST Request and sets all needed headers
 */
 void Response::_handlePost(HttpRequest &request, Server &server)
 {
-    (void)request;
-    (void)server;
+    if (_error != OK)
+        return ;
+    std::string path = request.getPath();
+    const std::map<std::string, location_t> locations = server.getLocations();
+    std::map<std::string, location_t>::const_iterator location_it = locations.end();
+
+    size_t size = 0;
+    // search for location
+    for (std::map<std::string, location_t>::const_iterator it = locations.begin(); it != locations.end(); it++)
+    {
+        if (path == it->first)
+        {
+            location_it = it;
+            break ;
+        }
+        else if (path.compare(0, it->first.size(), it->first) == 0)
+        {
+            if (it->first.size() > size)
+            {
+                location_it = it;
+                size = it->first.size();
+            }
+        }
+    }
+    // no location found
+    if (location_it == locations.end())
+    {
+        _error = NOT_FOUND;
+        return ;
+    }
+    // checks if POST is allowed
+    if (location_it->second.allowed_methods.allow_post == false)
+    {
+        _error = NOT_ALLOWED;
+        return ;
+    }
+    // check for redirection
+    if (location_it->second.redirection != "")
+    {
+        _error = MOVED_PERMANENTLY;
+        _location = location_it->second.redirection;
+        return ;
+    }
+    std::cout<< path << std::endl;
+    std::string full_path, root;
+    root = server.getRoot();
+    root.erase(root.size() - 1);
+    if (location_it->second.alias != "")
+    {
+        size_t pos = path.find(location_it->first);
+
+        if (pos != std::string::npos)
+            path.replace(pos, location_it->first.size(), location_it->second.alias);
+        full_path = path;
+    }
+    else
+        full_path = root + path;
+    std::cout<< full_path << std::endl;
+    struct stat file_info;
+    // checks if targt is directory
+    if (S_ISDIR(file_info.st_mode))
+    {
+        // check allowed methods
+        // get request body
+        // check if valid file
+        // check if file already exists
+        // save file to lacation
+    }
+    // checks if target is regular file
+    else 
+    {   
+        if (S_ISREG(file_info.st_mode))
+        {
+            _content = readFile(full_path);
+            _content_type = getMimeType(full_path);
+            return ;
+            // check allowed methods
+            // getMimeType?
+            // check if it can write to location
+            // open file
+            // write to file
+
+        }
+        else
+            // check allowed methods
+            // return(_buildDefaultErrorPage(400));
+            // create file
+            // open and write to it 
+            // if not working return error
+            return ; 
+    }
+    //get status codes and update content 
     std::cout << "POST REQUEST" << std::endl;
 }
 
