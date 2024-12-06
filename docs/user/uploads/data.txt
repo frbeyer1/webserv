@@ -1,6 +1,0 @@
------------------------------1532329011907104885886257943
-Content-Disposition: form-data; name="file"; filename="data.txt"
-Content-Type: text/plain
-
-sgfhzfdghzdg
------------------------------1532329011907104885886257943--

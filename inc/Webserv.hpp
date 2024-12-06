@@ -55,6 +55,8 @@
 
 /*   HTTP Error Codes   */
 #define OK                                          200
+#define CREATED                                     201
+#define ACCEPTED                                    202
 #define NO_CONTENT                                  204
 #define MOVED_PERMANENTLY                           301
 #define BAD_REQUEST                                 400
@@ -64,6 +66,7 @@
 #define PAYLOAD_TOO_LARGE                           413
 #define URI_TOO_LONG                                414
 #define REQUEST_HEADER_FIELDS_TOO_LARGE             431
+#define INTERNAL_SERVER_ERROR                       500
 #define NOT_IMPLEMENTED                             501
 
 /*   ANSI escape codes for colors   */

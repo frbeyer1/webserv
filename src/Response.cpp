@@ -42,6 +42,8 @@ static  std::string lookupErrorMessage(int error_code)
 {
     switch (error_code) {
     case  200: return "OK";
+    case  201: return "Created";
+    case  202: return "Accepted";
     case  301: return "Moved Permanently";
     case  400: return "Bad Request";
     case  401: return "Unauthorized";
@@ -191,6 +193,23 @@ static std::string buildAutoindex(std::string path_with_root, std::string path)
     }
     oss << "</pre><hr></body></html>";
     return (oss.str());
+}
+
+/*
+gets success message
+*/
+static std::string    readStatus(int _error){
+    switch (_error)
+    {
+    case OK:
+        return("docs/saving_success.html");
+    case CREATED:
+        return("docs/new_user_success.html");
+    case ACCEPTED:
+        return("docs/upload_success.html");
+    default:
+        return "";
+    }
 }
 
 // ======   Private member functions   ======= //
@@ -408,7 +427,6 @@ void Response::_handlePost(HttpRequest &request, Server &server)
         full_path = root + path;
     std::cout<< full_path << std::endl;
     struct stat file_info;
-    // set status code
     // upload a file
     if (stat(full_path.c_str(), &file_info) == 0 && S_ISDIR(file_info.st_mode))
     {
@@ -421,64 +439,72 @@ void Response::_handlePost(HttpRequest &request, Server &server)
                 filename = request.getBody().substr(filename_start, filename_end - filename_start);
                 std::cout << filename << std::endl;
             }
-            // else
-            //     _error = INVALID_FILE;
-            // return ;
+            else{
+                _error = BAD_REQUEST;
+                return ;}
         }
-        // else
-        //     _error = INVALID_FILE;
-        // return ;
-        std::istringstream file_content(request.getBody());
-        std::string line;
-        size_t i = 0;
-        while(std::getline(file_content, line))
-        {
-            i++;
-            if(line == "\n")
-                std::cout << i << std::endl;
-        }//file content rausschreiben ab erstem absatz, erste line aus body maybe als boundary usen
-        // size_t contentStart = request.getBody().find("\n", 0);
-        // std::cout << request.getBody().substr(contentStart, request.getBody().length() - contentStart);
+        else{
+            _error = BAD_REQUEST;
+            return ;}
+        // std::istringstream file_content(request.getBody());
+        // std::string line;
+        // size_t i = 0;
+        // while(std::getline(file_content, line))
+        // {
+        //     i++;
+        //     if(line == "\n")
+        //         std::cout << i << std::endl;
+        // }//file content rausschreiben ab erstem absatz, erste line aus body maybe als boundary usen
+        // // size_t contentStart = request.getBody().find("\n", 0);
+        // // std::cout << request.getBody().substr(contentStart, request.getBody().length() - contentStart);
         std::string filepath = full_path + "/" + filename;
         std::ofstream outFile(filepath.c_str(), std::ios::binary);
         if(outFile.is_open()){
             outFile << request.getBody();
             outFile.close();
+            _error = ACCEPTED;
         }
-
-        std::cout << "dir" << std::endl;
-        // std::cout << request.getBody() << std::endl;
-        // set status code
-        //break
-        return;
+        else{
+            _error = INTERNAL_SERVER_ERROR;
+            return ;}
     }
     // checks if target is regular file
     else 
     {   
+        // write to existing file
         if (stat(full_path.c_str(), &file_info) == 0 && S_ISREG(file_info.st_mode))
         {
-            // check if it can write to location
-            // open file
-            std::cout << "file" << std::endl;
-            std::cout << request.getBody() << std::endl;
-            // write to file
-            // set status code
-            //break
-            return;
+            std::cout << "wrote to file" << std::endl;
+            std::fstream outFile(full_path.c_str(), std::ios::binary | std::ios::in | std::ios::out | std::ios::app);
+            if(outFile.is_open()){
+                outFile << request.getBody();
+                outFile.close();
+            }
+            else{
+                _error = INTERNAL_SERVER_ERROR;
+                return ;}
         }
+        // create user file
         else{
             std::cout << "create file" << std::endl;
-            // return(_buildDefaultErrorPage(400));
-            // create file
-            // open and write to it 
-            // if not working return error
-            // set status code
-            //break
-            return ; 
+            std::ofstream outFile(full_path.c_str(), std::ios::binary);
+            if(outFile.is_open()){
+                outFile << request.getBody();
+                outFile.close();
+                _error = CREATED;
+            }
+            else{
+                _error = INTERNAL_SERVER_ERROR;
+                return ;}
         }
     }
-    //get status status codes and update content
-    std::cout << "POST REQUEST" << std::endl;
+    std::string message_path = readStatus(_error);
+    if(message_path.empty()){
+        _error = INTERNAL_SERVER_ERROR;
+        return ;}
+    _content = readFile(message_path);
+    _content_type = getMimeType(message_path);
+    return ;
 }
 
 /*
@@ -499,7 +525,7 @@ void Response::_buildResponseStr(HttpRequest &request, Server &server)
     std::ostringstream oss;
     
     _setConnection(request);
-    if (_error != OK && _error != MOVED_PERMANENTLY)
+    if (_error != OK && _error != MOVED_PERMANENTLY && _error != CREATED && _error != ACCEPTED)
         _setErrorPage(server);
     oss << "HTTP/1.1 " << _error << " " << lookupErrorMessage(_error) << "\r\n";
     oss << "Server: Webserv\r\n";
