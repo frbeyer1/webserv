@@ -22,21 +22,22 @@ int main(int argc, char **argv)
 
 // ==============   TO DO   ================== // 
 
-// debug messasges (print request and response ???)
-
 // fds:
 // -    if exit (need to close all open fds?)
 // -    check leaks
 
 // config parser:
 // -    check cgi path (execute rights) and if cgi to the extension exists
+// -    make parsing cleaner and less code
 
 // HttpRequestParser:
 // -    parse the chunk extensions and trailer section or keep ignoring ???
 // -    do Percent decoding ???
 
 // Response
-// -    send gif -> loads too long
-// -    check for one and a valid host header(if not -> 400 bad request) read rfc for more detail
-// -    do we sent the response in packets ? or chuncked or at once
-
+// -    check for one and a valid host header(if not -> 400 bad request) read rfc-- for more detail
+//        -> multiple server blocks: find default server and check for mathcing server_name
+// -    do we support chuncked responses
+// 
+// you can’t execve another web server
+// 

@@ -8,30 +8,28 @@ Response::Response()
     _connection = "";
     _content = "";
     _content_type = "";
-    _date = "";
     _location = "";
 }
 
 // ============   Deconstructor   ============ //
 Response::~Response()
 {
-
 }
 
 // ==============   Getters   ================ //
 const std::string &Response::getResponse() const
 {
-    return (_response);
+    return _response;
 }
 
 int Response::getError() const
 {
-    return (_error);
+    return _error;
 }
 
 const std::string &Response::getConnection() const
 {
-    return (_connection);
+    return _connection;
 }
 
 // ================   Utils   ================ //
@@ -98,7 +96,7 @@ static std::string    readFile(std::string path)
     content = oss.str();
 
     file.close();
-    return (content);
+    return content;
 }
 
 /*
@@ -127,6 +125,7 @@ static std::string getMimeType(const std::string& filename)
         mimeTypes[".mp3"] = "audio/mpeg";
         mimeTypes[".mp4"] = "video/mp4";
         mimeTypes[".sh"] = "application/x-sh";
+        mimeTypes[".json"] = "application/json";
         std::string extension = filename.substr(dotPos);
         std::map<std::string, std::string>::iterator it = mimeTypes.find(extension);
         if (it != mimeTypes.end())
@@ -151,32 +150,33 @@ static std::string getCurrentDateTime()
 build and returns an default html error page with the error_code
 */
 static std::string _buildDefaultErrorPage(int error_code)
-{
+{   
     std::ostringstream  oss;
 
-    oss << "<!DOCTYPE html><html><head><title>Error</title></head><body><center><h1>Error ";
-    oss << lookupErrorMessage(error_code); 
-    oss << "</h1><p>" << (error_code);
-    oss << ".</p></center></body></html>";
-    return (oss.str());
+    oss << "<!DOCTYPE html><html><head><title>Error</title></head><center><h1>";
+    oss << error_code << " " << lookupErrorMessage(error_code);
+    oss << "</h1></center><hr><center>webserv</center></body></html>";
+    return oss.str();
 }
 
 /*
 builds an html autoindex and returns it as a string
 */
-static std::string buildAutoindex(std::string path_with_root, std::string path)
+static std::string buildAutoindex(std::string path_with_root, std::string root)
 {
     std::vector<std::string> files;
     DIR* dir = opendir(path_with_root.c_str());
-    if (dir) {
+    if (dir) 
+    {
         struct dirent* entry;
-        while ((entry = readdir(dir)) != NULL) {
+        while ((entry = readdir(dir)) != NULL)
             files.push_back(entry->d_name);
-        }
         closedir(dir);
     }
     std::ostringstream  oss;
-    oss << "<!DOCTYPE html><html><head><title>Index of " << path << "</title></head><body><h1>Index of " << path << "</h1><hr><pre>";
+    std::string path_without_root = path_with_root;
+    path_without_root.erase(0, root.size());
+    oss << "<!DOCTYPE html><html><head><title>Index of " << path_without_root << "</title></head><body><h1>Index of " << path_without_root << "</h1><hr><pre>";
     for (size_t i = 0; i < files.size(); ++i)
     {
         struct stat file_info;
@@ -192,7 +192,34 @@ static std::string buildAutoindex(std::string path_with_root, std::string path)
         }
     }
     oss << "</pre><hr></body></html>";
-    return (oss.str());
+    return oss.str();
+}
+
+/*
+searches the right location for the request
+*/
+static std::map<std::string, location_t>::const_iterator   findLocation(std::string path, const std::map<std::string, location_t> &locations)
+{
+    std::map<std::string, location_t>::const_iterator location = locations.end();
+    size_t size = 0;
+
+    for (std::map<std::string, location_t>::const_iterator it = locations.begin(); it != locations.end(); it++)
+    {
+        if (path == it->first)
+        {
+            location = it;
+            break ;
+        }
+        else if (path.compare(0, it->first.size(), it->first) == 0)
+        {
+            if (it->first.size() > size)
+            {
+                location = it;
+                size = it->first.size();
+            }
+        }
+    }
+    return location;
 }
 
 /*
@@ -258,64 +285,49 @@ void Response::_handleGet(HttpRequest &request, Server &server)
     if (_error != OK)
         return ;
 
+    std::map<std::string, location_t>::const_iterator location;
     std::string path = request.getPath();
-    const std::map<std::string, location_t> locations = server.getLocations();
-    std::map<std::string, location_t>::const_iterator location_it = locations.end();
 
-    size_t size = 0;
-    // search for location
-    for (std::map<std::string, location_t>::const_iterator it = locations.begin(); it != locations.end(); it++)
-    {
-        if (path == it->first)
-        {
-            location_it = it;
-            break ;
-        }
-        else if (path.compare(0, it->first.size(), it->first) == 0)
-        {
-            if (it->first.size() > size)
-            {
-                location_it = it;
-                size = it->first.size();
-            }
-        }
-    }
+    location = findLocation(path, server.getLocations());
+    
     // no location found
-    if (location_it == locations.end())
+    if (location == server.getLocations().end())
     {
         _error = NOT_FOUND;
         return ;
     }
     // checks if GET is allowed
-    if (location_it->second.allowed_methods.allow_get == false)
+    if (location->second.allowed_methods.allow_get == false)
     {
         _error = NOT_ALLOWED;
         return ;
     }
     // check for redirection
-    if (location_it->second.redirection != "")
+    if (location->second.redirection != "")
     {
         _error = MOVED_PERMANENTLY;
-        _location = location_it->second.redirection;
+        _location = location->second.redirection;
         return ;
     }
-    // check if targt is there
-    std::string full_path, root;
-    root = server.getRoot();
-    root.erase(root.size() - 1);
-    if (location_it->second.alias != "")
-    {
-        size_t pos = path.find(location_it->first);
 
+    // add root to path
+    std::string root;
+    root = server.getRoot();
+    root.erase(root.size() - 1, 1);
+    path = root + path;
+
+    // check for alias
+    if (location->second.alias != "")
+    {
+        size_t pos = path.find(root + location->first);
         if (pos != std::string::npos)
-            path.replace(pos, location_it->first.size(), location_it->second.alias);
-        full_path = path;
+            path.replace(pos, root.size() + location->first.size(), location->second.alias);
     }
-    else
-        full_path = root + path;
+
     struct stat file_info;
+    
     // file does not exist
-    if (stat(full_path.c_str(), &file_info) != 0)
+    if (stat(path.c_str(), &file_info) != 0)
     {
         _error = NOT_FOUND;
         return ;
@@ -324,27 +336,28 @@ void Response::_handleGet(HttpRequest &request, Server &server)
     if (S_ISDIR(file_info.st_mode))
     {
         // Path does not ends with "/" or "/$"
-        if (full_path[full_path.size() - 1] != '/' && full_path.compare(full_path.size() - 2, 2, "/$") != 0)
+        if (path[path.size() - 1] != '/' && path.compare(path.size() - 2, 2, "/$") != 0)
         {
-            _error = NOT_FOUND;
+            _error = MOVED_PERMANENTLY;
+            _location = path + "/";
             return;
         }
         // check for index
-        if (location_it->second.index != "")
+        if (location->second.index != "")
         {
-            _content = readFile(location_it->second.index);
-            _content_type = getMimeType(location_it->second.index);
+            _content = readFile(location->second.index);
+            _content_type = getMimeType(location->second.index);
             return ;
         }
         // check for autoindex
-        if (location_it->second.autoindex == false)
+        if (location->second.autoindex == false)
         {
             _error = FORBIDDEN;
             return ;
         }
         else
         {
-            _content = buildAutoindex(full_path, path);
+            _content = buildAutoindex(path, root);
             _content_type = "text/html";
             return ;
         }
@@ -352,8 +365,8 @@ void Response::_handleGet(HttpRequest &request, Server &server)
     // checks if target is regular file
     else if (S_ISREG(file_info.st_mode))
     {
-        _content = readFile(full_path);
-        _content_type = getMimeType(full_path);
+        _content = readFile(path);
+        _content_type = getMimeType(path);
         return ;
     }
     else
@@ -364,12 +377,118 @@ void Response::_handleGet(HttpRequest &request, Server &server)
 }
 
 /*
+handles an Post Request and sets all needed headers
+*/
+// void Response::_handlePost(HttpRequest &request, Server &server, HttpMethod method)
+// {
+//     if (_error != OK)
+//         return ;
+
+//     std::map<std::string, location_t>::const_iterator location;
+//     std::string path = request.getPath();
+
+//     location = findLocation(path, server.getLocations());
+    
+//     // no location found
+//     if (location == server.getLocations().end())
+//     {
+//         _error = NOT_FOUND;
+//         return ;
+//     }
+
+//     // checks if post is allowed
+//     if (location->second.allowed_methods.allow_post == false)
+//     {
+//         _error = NOT_ALLOWED;
+//         return ;
+//     }
+
+//     // check if upload directive is specified
+//     if (location->second.upload == "")
+//     {
+//         _error = NOT_ALLOWED;
+//         return ;
+//     }
+
+//     // check for redirection
+//     if (location->second.redirection != "")
+//     {
+//         _error = MOVED_PERMANENTLY;
+//         _location = location->second.redirection;
+//         return ;
+//     }
+// 
+//     // add root to path
+//     std::string root;
+//     root = server.getRoot();
+//     root.erase(root.size() - 1, 1);
+//     path = root + path;
+
+//     // check for alias
+//     if (location->second.alias != "")
+//     {
+//         size_t pos = path.find(root + location->first);
+//         if (pos != std::string::npos)
+//             path.replace(pos, root.size() + location->first.size(), location->second.alias);
+//     }
+
+//     // check for Content-Type
+//     std::map<std::string, std::string>::const_iterator it = request.getHeaders().find("Content-Type");
+//     if (it == request.getHeaders().end())
+//     {
+//         _error = BAD_REQUEST;
+//         return;
+//     }
+//     std::string filename;
+
+//     if (it->second == "multipart/form-data")
+//     {
+//         // dont copy full body ???
+
+//     }
+//     // else if (it->second == "application/json")
+//     // else if (it->second == "application/x-www-form-urlencoded")
+//     else
+//     {
+//         _error = UNSUPPORTED_MEDIA_TYPE;
+//         // or just write to file and makeup an filename (Raw Data Uploads)
+//         return ; 
+//     }
+    
+//     // upload file
+//     std::ofstream file(filename, std::ios::binary);
+//     if (file.fail())
+//     {
+//         _error = BAD_REQUEST;
+//         return ;
+//     }
+//     file.write();
+
+
+//     // check Content-Type: 
+//     //          1. application/json: Used for sending JSON data1
+//     //          2. application/x-www-form-urlencoded: Used for sending simple key-value pairs, typically from HTML forms3
+//     //          3. multipart/form-data: Used for sending binary data, files, or form data with file uploads1
+//     // 
+//     // if 1.    ???
+//     // 
+//     // if 2.    ???
+//     // 
+//     // if 3.
+//     //      remove boundary from body and get Content-Disposition: and Content-Type:
+//     //      
+//     // POST-Redirect-GET ???
+
+// // }
+
+/*
 handles an POST Request and sets all needed headers
 */
 void Response::_handlePost(HttpRequest &request, Server &server)
 {
     if (_error != OK)
         return ;
+    
     std::string path = request.getPath();
     const std::map<std::string, location_t> locations = server.getLocations();
     std::map<std::string, location_t>::const_iterator location_it = locations.end();
@@ -512,9 +631,78 @@ handles an DELETE Request and sets all needed headers
 */
 void Response::_handleDelete(HttpRequest &request, Server &server)
 {
-    (void)request;
-    (void)server;
-    std::cout << "DELETE REQUEST" << std::endl;
+    if (_error != OK)
+        return ;
+
+    std::map<std::string, location_t>::const_iterator location;
+    std::string path = request.getPath();
+
+    location = findLocation(path, server.getLocations());
+    
+    // no location found
+    if (location == server.getLocations().end())
+    {
+        _error = NOT_FOUND;
+        return ;
+    }
+    // checks if DELETE is allowed
+    if (location->second.allowed_methods.allow_delete == false)
+    {
+        _error = NOT_ALLOWED;
+        return ;
+    }
+    // check for redirection
+    if (location->second.redirection != "")
+    {
+        _error = MOVED_PERMANENTLY;
+        _location = location->second.redirection;
+        return ;
+    }
+
+    // add root to path
+    std::string root;
+    root = server.getRoot();
+    root.erase(root.size() - 1, 1);
+    path = root + path;
+
+    // check for alias
+    if (location->second.alias != "")
+    {
+        size_t pos = path.find(root + location->first);
+        if (pos != std::string::npos)
+            path.replace(pos, root.size() + location->first.size(), location->second.alias);
+    }
+
+    struct stat file_info;
+    
+    // file does not exist
+    if (stat(path.c_str(), &file_info) != 0)
+    {
+        _error = NOT_FOUND;
+        return ;
+    }
+    // check for write accsess
+    if ((file_info.st_mode & S_IWUSR) == 0)
+    {
+        _error = FORBIDDEN;
+        return ;
+    }
+    // checks if targt is directory
+    if (S_ISDIR(file_info.st_mode))
+    {
+        // Path does not ends with "/" or "/$"
+        if (path[path.size() - 1] != '/' && path.compare(path.size() - 2, 2, "/$") != 0)
+        {
+            _error = NOT_FOUND;
+            return;
+        }
+    }
+    // removes file
+    if (remove(path.c_str()) != 0)
+    {
+        _error = INTERNAL_SERVER_ERROR;
+        return ;
+    }
 }
 
 /*
@@ -545,7 +733,6 @@ void Response::_buildResponseStr(HttpRequest &request, Server &server)
     _response = oss.str();
 }
 
-
 // ======   Public member functions   ======= //
 /*
 clear the response object
@@ -557,8 +744,15 @@ void Response::clear()
     _connection = "";
     _content = "";
     _content_type = "";
-    _date = "";
     _location = "";
+}
+
+/*
+trims the response string by the allready send bytes
+*/
+void Response::trimResponse(int bytes_send)
+{
+    _response.erase(0, bytes_send);
 }
 
 /*

@@ -144,7 +144,6 @@ void    ServerManager::_readRequest(Client &client)
         client.request.parse(buffer, bytes_read);
         std::memset(buffer, 0, sizeof(buffer));
     }
-
     if (client.request.getParsingState() == Parsing_Finished || client.request.getError() != OK)
     {
         Server *ptr = client.server;
@@ -177,30 +176,39 @@ void    ServerManager::_sendResponse(Client &client)
 
     const std::string &response = client.response.getResponse();
 
-    bytes_send = write(fd, response.c_str(), response.size());
+    if (response.size() >= RESPONSE_WRITE_SIZE)
+        bytes_send = write(fd, response.c_str(), RESPONSE_WRITE_SIZE);
+    else
+        bytes_send = write(fd, response.c_str(), response.size());
+
     if (bytes_send < 0)
     {
         Logger::log(RED, ERROR, "Write error on fd[%i]", fd);
         _closeConnection(fd);
         return ;
     }
-    Logger::log(CYAN, INFO, "Response send to client fd[%i] with code[%i]", client.getClientFd(), client.response.getError());
-    if (client.response.getConnection() == "keep-alive")
+    if (bytes_send == 0 || (size_t)bytes_send == response.size())
     {
-        struct epoll_event event;
-
-        event.events = EPOLLIN;
-        event.data.fd = fd;
-        if (epoll_ctl(_epoll_fd, EPOLL_CTL_MOD, fd, &event))
+        Logger::log(CYAN, INFO, "Response send to client fd[%i] with code[%i]", client.getClientFd(), client.response.getError());
+        if (client.response.getConnection() == "keep-alive")
         {
-            Logger::log(RED, ERROR, "Changing settings associated with fd[%i] in epoll instance failed", _epoll_fd);
-            exit(EXIT_FAILURE);
+            struct epoll_event event;
+
+            event.events = EPOLLIN;
+            event.data.fd = fd;
+            if (epoll_ctl(_epoll_fd, EPOLL_CTL_MOD, fd, &event))
+            {
+                Logger::log(RED, ERROR, "Changing settings associated with fd[%i] in epoll instance failed", _epoll_fd);
+                exit(EXIT_FAILURE);
+            }
+            client.response.clear();
+            client.request.clear();
         }
-        client.response.clear();
-        client.request.clear();
+        else
+            _closeConnection(fd);
     }
     else
-        _closeConnection(fd);
+        client.response.trimResponse(bytes_send);
 }
 
 // ==========   Member functions   =========== //

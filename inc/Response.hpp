@@ -10,7 +10,6 @@ class Response
         std::string _connection;
         std::string _content;
         std::string _content_type;
-        std::string _date;
         std::string _location;
 
     // Private member functions 
@@ -35,6 +34,7 @@ class Response
 
     // Member functions
         void        buildResponse(HttpRequest &request, Server &server);
+        void        trimResponse(int bytes_send);
         void        clear();
     
 };

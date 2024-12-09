@@ -65,6 +65,7 @@
 #define NOT_ALLOWED                                 405
 #define PAYLOAD_TOO_LARGE                           413
 #define URI_TOO_LONG                                414
+#define UNSUPPORTED_MEDIA_TYPE                      415
 #define REQUEST_HEADER_FIELDS_TOO_LARGE             431
 #define INTERNAL_SERVER_ERROR                       500
 #define NOT_IMPLEMENTED                             501
