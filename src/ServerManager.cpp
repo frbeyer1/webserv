@@ -140,6 +140,7 @@ void    ServerManager::_readRequest(Client &client)
     }
     else
     {
+        std::cout << buffer;
         client.setLastMsgTime(time(NULL));
         client.request.parse(buffer, bytes_read);
         std::memset(buffer, 0, sizeof(buffer));
@@ -165,9 +166,10 @@ void    ServerManager::_readRequest(Client &client)
 
 /*
 sending the Response to the client:
-    - 
-    - 
+    - write RESPONSE_WRITE_SIZE to client_Fd
+    - clear reuquest and response objects after sending full response
     - set epoll settings to EPOLLIN after sending response to client
+    - check if connection should be "keep-alive"
 */
 void    ServerManager::_sendResponse(Client &client)
 {

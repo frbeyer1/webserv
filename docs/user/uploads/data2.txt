@@ -1,6 +1,0 @@
-------WebKitFormBoundaryFRncUziFhcJZeIeI
-Content-Disposition: form-data; name="file"; filename="data2.txt"
-Content-Type: text/plain
-
-username=tyeytywtyusername=rtertertert
-------WebKitFormBoundaryFRncUziFhcJZeIeI--
