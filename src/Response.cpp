@@ -323,7 +323,13 @@ void Response::_handleGet(HttpRequest &request, Server &server)
         if (pos != std::string::npos)
             path.replace(pos, root.size() + location->first.size(), location->second.alias);
     }
-
+    // cgi
+    if(!location->second.cgi = "")
+    {
+        process_cgi(path, )
+        return ;
+    }
+    // std::cout << request.getPath() <<std::endl;
     struct stat file_info;
     
     // file does not exist
