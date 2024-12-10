@@ -383,62 +383,37 @@ void Response::_handlePost(HttpRequest &request, Server &server)
 {
     if (_error != OK)
         return ;
-    
-    std::string path = request.getPath();
-    const std::map<std::string, location_t> locations = server.getLocations();
-    std::map<std::string, location_t>::const_iterator location_it = locations.end();
 
-    size_t size = 0;
-    // search for location
-    for (std::map<std::string, location_t>::const_iterator it = locations.begin(); it != locations.end(); it++)
-    {
-        if (path == it->first)
-        {
-            location_it = it;
-            break ;
-        }
-        else if (path.compare(0, it->first.size(), it->first) == 0)
-        {
-            if (it->first.size() > size)
-            {
-                location_it = it;
-                size = it->first.size();
-            }
-        }
-    }
+    std::map<std::string, location_t>::const_iterator location;
+    std::string path = request.getPath();
+
+    location = findLocation(path, server.getLocations());
+
     // no location found
-    if (location_it == locations.end())
+    if (location == server.getLocations().end())
     {
         _error = NOT_FOUND;
         return ;
     }
-    // checks if POST is allowed
-    // if (location_it->second.allowed_methods.allow_post == false) wroooooooongg ------------------------------
-    // {
-    //     std::cout << "lolololo" << std::endl;
-    //     _error = NOT_ALLOWED;
-    //     return ;
-    // }
-    // check for redirection
-    if (location_it->second.redirection != "")
+    // checks if GET is allowed
+    if (location->second.allowed_methods.allow_get == false)
     {
-        _error = MOVED_PERMANENTLY;
-        _location = location_it->second.redirection;
+        _error = NOT_ALLOWED;
         return ;
     }
+    // check for redirection
+    if (location->second.redirection != "")
+    {
+        _error = MOVED_PERMANENTLY;
+        _location = location->second.redirection;
+        return ;
+    }
+
     std::string full_path, root;
     root = server.getRoot();
     root.erase(root.size() - 1);
-    if (location_it->second.alias != "")
-    {
-        size_t pos = path.find(location_it->first);
 
-        if (pos != std::string::npos) 
-            path.replace(pos, location_it->first.size(), location_it->second.alias);
-        full_path = path;
-    }
-    else
-        full_path = root + path;
+    full_path = root + path;
     std::cout<< full_path << std::endl;
     struct stat file_info;
     // upload a file
