@@ -140,7 +140,6 @@ void    ServerManager::_readRequest(Client &client)
     }
     else
     {
-        std::cout << buffer;
         client.setLastMsgTime(time(NULL));
         client.request.parse(buffer, bytes_read);
         std::memset(buffer, 0, sizeof(buffer));

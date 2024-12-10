@@ -324,11 +324,11 @@ void Response::_handleGet(HttpRequest &request, Server &server)
             path.replace(pos, root.size() + location->first.size(), location->second.alias);
     }
     // cgi
-    if(!location->second.cgi = "")
-    {
-        process_cgi(path, )
-        return ;
-    }
+    // if(!location->second.cgi = "")
+    // {
+    //     process_cgi(path, )
+    //     return ;
+    // }
     // std::cout << request.getPath() <<std::endl;
     struct stat file_info;
     

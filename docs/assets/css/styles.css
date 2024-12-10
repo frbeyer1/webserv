@@ -1,0 +1,27 @@
+body {
+    font-family: Arial;
+    margin: 0;
+    padding: 0;
+}
+header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: #0d4e39;
+}
+header img {
+    display:block;
+    height: 100px;
+}
+nav a {
+    color: white;
+    text-decoration: none;
+    justify-content: center;
+    margin: 0 30px;
+    font-size: 26px;
+}
+nav a:hover {
+    color: #041b14;
+}
+
+

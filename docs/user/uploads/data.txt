@@ -1,6 +1,0 @@
------------------------------133651851733103139083525183082
-Content-Disposition: form-data; name="file"; filename="data.txt"
-Content-Type: text/plain
-
-walter white
------------------------------133651851733103139083525183082--
