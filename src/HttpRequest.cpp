@@ -164,6 +164,33 @@ static bool    checkPathUnderRoot(std::string path)
 }
 
 /*
+does percent decoding on the URI
+*/
+static void percent_decoding(std::string &path)
+{
+    std::string decoded_path;
+
+    for (size_t i = 0; i < path.length(); ++i)
+    {
+        if (path[i] == '%') 
+        {
+            if (i + 2 < path.length())
+            {
+                std::string hex = path.substr(i + 1, 2);
+                char decoded_char = static_cast<char>(strtol(hex.c_str(), NULL, 16));
+                decoded_path.push_back(decoded_char);
+                i += 2;
+            }
+            else 
+                decoded_path.push_back(path[i]);
+        } 
+        else 
+            decoded_path.push_back(path[i]);
+    }
+    path = decoded_path;
+}
+
+/*
 Checks for consecutive slashes in the path string and deletes them
 */
 static void    checkPathConsecutiveSlashes(std::string &path)
@@ -361,6 +388,7 @@ void    HttpRequest::parse(uint8_t *data, size_t size)
             break;
         case Request_Line_H:
             checkPathConsecutiveSlashes(_path);
+            percent_decoding(_path);
             if (checkPathUnderRoot(_path))
             {
                 _error = FORBIDDEN;

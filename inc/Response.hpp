@@ -34,7 +34,7 @@ class Response
 
     // Member functions
         void        buildResponse(HttpRequest &request, Server &server);
-        void        trimResponse(int bytes_send);
+        void        trimResponse(int i);
         void        clear();
     
 };

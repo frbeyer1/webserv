@@ -25,6 +25,20 @@ static void    addToEpollInstance(int epoll_fd, int add_fd)
         exit(EXIT_FAILURE);
     }
 }
+/*
+adds the add_fd to the epoll instance
+*/
+static void    addServerToEpollInstance(int epoll_fd, int add_fd)
+{
+    struct epoll_event event;
+    event.events = EPOLLIN; 
+    event.data.fd = add_fd;
+    if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, add_fd, &event) == -1)
+    {
+        Logger::log(RED, ERROR, "adding fd[%i] to epoll instance failed", add_fd);
+        exit(EXIT_FAILURE);
+    }
+}
 
 /*
 Checks for duplicates in the server list (same Host and Port)
@@ -181,10 +195,9 @@ void    ServerManager::_sendResponse(Client &client)
         bytes_send = write(fd, response.c_str(), RESPONSE_WRITE_SIZE);
     else
         bytes_send = write(fd, response.c_str(), response.size());
-
     if (bytes_send < 0)
     {
-        Logger::log(RED, ERROR, "Write error on fd[%i]", fd);
+        Logger::log(RED, ERROR, "Write error on fd[%i]: %s", fd, strerror(errno));
         _closeConnection(fd);
         return ;
     }
@@ -271,7 +284,7 @@ void    ServerManager::boot()
     // adds all server_fds to epoll instance and starts listening on the server sockets
     for (std::map<int, Server>::iterator it = _server_map.begin(); it != _server_map.end(); it++)
     {
-        addToEpollInstance(_epoll_fd, it->second.getServerFd());
+        addServerToEpollInstance(_epoll_fd, it->second.getServerFd());
         it->second.startListening();
     }
     // main server loop

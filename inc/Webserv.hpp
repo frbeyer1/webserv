@@ -4,6 +4,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <signal.h>
 #include <dirent.h>
 
 #include <sys/socket.h>

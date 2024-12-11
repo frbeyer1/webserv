@@ -626,9 +626,9 @@ void Response::clear()
 /*
 trims the response string by the allready send bytes
 */
-void Response::trimResponse(int bytes_send)
+void Response::trimResponse(int i)
 {
-    _response.erase(0, bytes_send);
+    _response.erase(0, i);
 }
 
 /*

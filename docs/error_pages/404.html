@@ -2,44 +2,47 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>404 Not Found</title>
+    <title>Error Page</title>
     <style>
-        body {
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
             font-family: Arial, sans-serif;
-            background-color: #ffa0a0;;
-            color: #000000;
+        }
+        .error-container {
+            background-image: url('/images/shrader_no_color.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .error-header {
+            width: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            color: white;
             text-align: center;
-            padding: 50px;
+            padding: 20px 0;
         }
-        h1 {
-            font-size: 50px;
+        .error-header h1 {
+            margin: 0;
+            font-size: 5em;
         }
-        h2 {
-            font-size: 30px;
-        }
-        p {
-            font-size: 18px;
-        }
-        a {
-            display: inline-block;
-            margin-top: 20px;
-            padding: 10px 20px;
-            font-size: 18px;
-            color: #fff;
-            background-color: #007BFF;
-            text-decoration: none;
-            border-radius: 5px;
-        }
-        a:hover {
-            background-color: #0056b3;
+        .error-header p {
+            margin: 15 px 0 0;
+            font-size: 2em;
         }
     </style>
 </head>
 <body>
-    <h1>404</h1>
-    <h2>Page Not Found</h2>
-    <p>Sorry, the page you are looking for could not be found.<br>
-    It may have been removed, had its name changed, or is temporarily unavailable.</p>
+    <div class="error-container">
+        <div class="error-header">
+            <h1>404 Error</h1>
+            <p>Page Not Found</p>
+        </div>
+    </div>
 </body>
 </html>

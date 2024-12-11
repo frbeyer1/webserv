@@ -1,8 +1,14 @@
 #include "../inc/Webserv.hpp"
 #include "../inc/ServerManager.hpp"
 
+void sigpipe_handler(int signum) 
+{
+    (void)signum;
+}
+
 int main(int argc, char **argv)
 {
+    signal(SIGPIPE, sigpipe_handler);
     std::string config;
 
     if (argc == 1)
@@ -32,7 +38,6 @@ int main(int argc, char **argv)
 
 // HttpRequestParser:
 // -    parse the chunk extensions and trailer section or keep ignoring ???
-// -    do Percent decoding ???
 
 // Response
 // -    check for one and a valid host header(if not -> 400 bad request) read rfc-- for more detail
