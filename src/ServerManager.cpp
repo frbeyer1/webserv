@@ -215,16 +215,26 @@ setting up all server
 */
 void    ServerManager::setup(std::string config)
 {
+    Logger::log(WHITE, INFO, "Setting up Servers ...");
+
     // parsing of the config file
     ConfigParser        parser(_server_blocks);
 
     parser.parse(config);
     Logger::log(GREY, DEBUG, "Finished config file parsing");
-
     if (_server_blocks.size() == 0)
     {
         Logger::log(RED, ERROR, "Config File: no server block found ( empty file ? )");
         exit(EXIT_FAILURE);
+    }
+
+    // Printing server setup
+    for (size_t i = 0; i < _server_blocks.size(); i++)
+    {
+        std::string server_name = "";
+        if (!_server_blocks[i]._server_names.empty())
+            server_name = _server_blocks[i]._server_names[0];
+        Logger::log(WHITE, INFO, "Server setup: Name[%s] Host[%s] Port[%i]", server_name.c_str(), _server_blocks[i]._ip.c_str(), _server_blocks[i]._port);
     }
 
     // find all needed sockets
@@ -246,12 +256,12 @@ void    ServerManager::setup(std::string config)
     }
 
     // setup all sockets and add to _socket_map
-    Logger::log(WHITE, INFO, "Setting up sockets ...");
+    Logger::log(GREY, DEBUG, "Setting up sockets ...");
     for (size_t i = 0; i < sockets.size(); i++)
     {
         sockets[i].setup();
         _socket_map.insert(std::pair<int, Socket>(sockets[i].getSocketFd(), sockets[i]));
-        Logger::log(WHITE, INFO, "Socket setup: Host[%s] Port[%i]", inAddrToIpString(htonl(sockets[i].getHost())).c_str(), sockets[i].getPort());
+        Logger::log(GREY, DEBUG, "Socket setup: Host[%s] Port[%i]", inAddrToIpString(htonl(sockets[i].getHost())).c_str(), sockets[i].getPort());
     }
 
     // assign sockets to servers
@@ -266,7 +276,7 @@ void    ServerManager::setup(std::string config)
             }
         }
     }
-    Logger::log(GREY, DEBUG, "Setting up servers finished");
+    Logger::log(GREY, DEBUG, "Setting up Sockets finished");
 }
 
 /*
@@ -297,6 +307,7 @@ void    ServerManager::boot()
         addServerToEpollInstance(_epoll_fd, it->second.getSocketFd());
         it->second.startListening();
     }
+    Logger::log(WHITE, INFO, "Booted Servers successfully");
     // main server loop
     struct epoll_event event_list[MAX_EPOLL_EVENTS];
 

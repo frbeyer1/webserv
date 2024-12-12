@@ -177,8 +177,9 @@ static void handleServerNames(std::string parameter, ServerBlock &server_block)
         }
         else
             name.push_back(parameter[i]);
-        
     }
+    if (!name.empty())
+        server_block._server_names.push_back(name);
 }
 
 /*
@@ -424,16 +425,27 @@ static void handleCgi(std::string parameter, Location &location)
         extension.push_back(parameter[i]);
         i++;
     }
-    if (!isspace(parameter[i]))
+    if (!iswspace(parameter[i]))
     {
         Logger::log(RED, ERROR, "Config file misconfigured: cgi directive: missing space after extension");
         exit(EXIT_FAILURE);
     }
-    i++;
+    while (iswspace(parameter[i]))
+        i++;
     while (i < parameter.size())
     {
         path.push_back(parameter[i]);
         i++;
+    }
+    if (access(path.c_str(), F_OK))
+    {
+        Logger::log(RED, ERROR, "Config file misconfigured: cgi directive: can not find cgi at %s", path.c_str());
+        exit(EXIT_FAILURE);
+    }
+    if (access(path.c_str(), X_OK))
+    {
+        Logger::log(RED, ERROR, "Config file misconfigured: cgi directive: can not execute cgi at %s", path.c_str());
+        exit(EXIT_FAILURE);
     }
     location._cgi.insert(std::make_pair(extension, path));
 }
