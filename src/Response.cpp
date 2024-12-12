@@ -32,6 +32,16 @@ const std::string &Response::getConnection() const
     return _connection;
 }
 
+const std::string &Response::getContentType() const
+{
+    return _content_type;
+}
+
+const std::string &Response::getContentLength() const
+{
+    return _content_length;
+}
+
 // ================   Utils   ================ //
 /*
 returns an string accordingly to the error_code
@@ -326,9 +336,14 @@ void Response::_handleGet(HttpRequest &request, Server &server)
     // cgi
     // if(!location->second.cgi = "")
     // {
-    //     process_cgi(path, )
+    //     process_cgi(char **cgifile, char **env, client);
     //     return ;
+    //     if fd != -1 save in content
+    //     else return error code
     // }
+    for (std::map<std::string, std::string>::const_iterator it = request.getHeaders().begin(); it != request.getHeaders().end(); ++it) {
+        std::cout << it->first << ": " << it->second << std::endl;
+    }
     // std::cout << request.getPath() <<std::endl;
     struct stat file_info;
     
@@ -402,7 +417,7 @@ void Response::_handlePost(HttpRequest &request, Server &server)
         return ;
     }
     // checks if GET is allowed
-    if (location->second.allowed_methods.allow_get == false)
+    if (location->second.allowed_methods.allow_post == false)
     {
         _error = NOT_ALLOWED;
         return ;
@@ -420,56 +435,70 @@ void Response::_handlePost(HttpRequest &request, Server &server)
     root.erase(root.size() - 1);
 
     full_path = root + path;
-    std::cout<< full_path << std::endl;
     struct stat file_info;
-    // upload a file
-    if (stat(full_path.c_str(), &file_info) == 0 && S_ISDIR(file_info.st_mode))
+
+    if (stat(full_path.c_str(), &file_info) == 0 && S_ISDIR(file_info.st_mode)) // upload a file
     {
+        size_t content_start;
+        size_t content_end;
         std::string filename;
-        size_t filename_start = request.getBody().find("filename") + 10;
-        if (filename_start != std::string::npos)
+        std::string filepath;
+    
+        if(request.getHeaders().at("Content-Type").find("multipart/form-data") != std::string::npos)
         {
-            size_t filename_end = request.getBody().find('\"', filename_start);
-            if (filename_end != std::string::npos){
-                filename = request.getBody().substr(filename_start, filename_end - filename_start);
-                std::cout << filename << std::endl;
+            std::istringstream file_content(request.getBody());
+            std::string boundary;
+            std::getline(file_content, boundary);
+            boundary.erase(boundary.find_last_not_of("\r\n") + 1);
+            std::string boundary_end = boundary;
+            boundary_end.append("--");
+
+            size_t pos = request.getBody().find("filename") + 10;
+            if (pos != std::string::npos)
+            {
+                size_t filename_end = request.getBody().find('\"', pos);
+                if (filename_end != std::string::npos){
+                    filename = request.getBody().substr(pos, filename_end - pos);
+                }
+                else{
+                    _error = BAD_REQUEST;
+                    return ;}
             }
             else{
                 _error = BAD_REQUEST;
                 return ;}
+            filepath = full_path + "/" + filename;
+            content_end = request.getBody().find(boundary_end) - 2;
+            content_start = request.getBody().find("\r\n\r\n") + 4;
         }
-        else{
-            _error = BAD_REQUEST;
-            return ;}
-        // std::istringstream file_content(request.getBody());
-        // std::string line;
-        // size_t i = 0;
-        // while(std::getline(file_content, line))
-        // {
-        //     i++;
-        //     if(line == "\n")
-        //         std::cout << i << std::endl;
-        // }//file content rausschreiben ab erstem absatz, erste line aus body maybe als boundary usen
-        // // size_t contentStart = request.getBody().find("\n", 0);
-        // // std::cout << request.getBody().substr(contentStart, request.getBody().length() - contentStart);
-        std::string filepath = full_path + "/" + filename;
+        else
+        {
+            if(server.getLocations().at("/uploads/").allowed_methods.allow_post == false){
+                _error = NOT_ALLOWED;
+                return;
+            }
+            filename = getCurrentDateTime();
+            full_path = server.getLocations().at("/uploads/").alias;
+            filepath = full_path + filename;
+            content_start = 0;
+            content_end = request.getBody().length();
+        }
         std::ofstream outFile(filepath.c_str(), std::ios::binary);
         if(outFile.is_open()){
-            outFile << request.getBody();
+            outFile << request.getBody().substr(content_start, content_end - content_start);
             outFile.close();
             _error = ACCEPTED;
         }
         else{
             _error = INTERNAL_SERVER_ERROR;
             return ;}
-    }
-    // checks if target is regular file
-    else 
+        }
+    
+    else // checks if target is regular file
     {   
         // write to existing file
         if (stat(full_path.c_str(), &file_info) == 0 && S_ISREG(file_info.st_mode))
         {
-            std::cout << "wrote to file" << std::endl;
             std::fstream outFile(full_path.c_str(), std::ios::binary | std::ios::in | std::ios::out | std::ios::app);
             if(outFile.is_open()){
                 outFile << request.getBody();
@@ -481,7 +510,6 @@ void Response::_handlePost(HttpRequest &request, Server &server)
         }
         // create user file
         else{
-            std::cout << "create file" << std::endl;
             std::ofstream outFile(full_path.c_str(), std::ios::binary);
             if(outFile.is_open()){
                 outFile << request.getBody();
@@ -514,7 +542,7 @@ void Response::_handleDelete(HttpRequest &request, Server &server)
     std::string path = request.getPath();
 
     location = findLocation(path, server.getLocations());
-    
+
     // no location found
     if (location == server.getLocations().end())
     {
@@ -626,9 +654,9 @@ void Response::clear()
 /*
 trims the response string by the allready send bytes
 */
-void Response::trimResponse(int i)
+void Response::trimResponse(int bytes_send)
 {
-    _response.erase(0, i);
+    _response.erase(0, bytes_send);
 }
 
 /*
@@ -654,3 +682,12 @@ void Response::buildResponse(HttpRequest &request, Server &server)
     }
     _buildResponseStr(request, server);
 }
+
+/*
+to do:
+- build cgi connection - get content type
+- content-length for cgi
+- allow_post
+- handle multiple file upload
+- [11/Dec/2024  21:03:42]  [ERROR]  Could not bind socket: Address already in use -> when CRTL D
+*/

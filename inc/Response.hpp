@@ -2,6 +2,11 @@
 
 #include "Webserv.hpp"
 
+struct cgireturn {
+    int fdread;
+    char **newenv;
+};
+
 class Response
 {
     private:
@@ -10,6 +15,7 @@ class Response
         std::string _connection;
         std::string _content;
         std::string _content_type;
+        std::string _content_length;
         std::string _location;
 
     // Private member functions 
@@ -29,6 +35,8 @@ class Response
     
     // Getters
         int                 getError() const;
+        const std::string   &getContentType() const;
+        const std::string   &getContentLength() const;
         const std::string   &getResponse() const;
         const std::string   &getConnection() const;
 
@@ -36,5 +44,7 @@ class Response
         void        buildResponse(HttpRequest &request, Server &server);
         void        trimResponse(int i);
         void        clear();
+
+        // cgireturn *process_cgi(char **cgifile, char **env, Client &ref1);
     
 };
