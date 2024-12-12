@@ -324,16 +324,46 @@ void Response::_handleGet(Request &request, ServerBlock &server)
             path.replace(pos, root.size() + location->first.size(), location->second._alias);
     }
     // cgi
-    // if(!location->second.cgi = "")
-    // {
-    //     process_cgi(char **cgifile, char **env, client);
-    //     return ;
-    //     if fd != -1 save in content
-    //     else return error code
-    // }
+
     // for (std::map<std::string, std::string>::const_iterator it = request.getHeaders().begin(); it != request.getHeaders().end(); ++it) {
     //     std::cout << it->first << ": " << it->second << std::endl;
     // }
+    if(!location->second._cgi.empty())
+    {
+        if(location->second._allowed_methods._allow_post == false){
+            _error = NOT_ALLOWED;
+            return;
+        }
+        std::string cgi_script = request.getPath().substr(request.getPath().find(location->first) + location->first.size());
+        std::string cgi_path;
+        //check if script extention is valid and if so sets path
+        for (std::map<std::string, std::string>::const_iterator it = location->second._cgi.begin(); it != location->second._cgi.end(); ++it) {
+            if(cgi_script.find(it->first, cgi_script.length() - it->first.size()) != std::string::npos)
+            {
+                cgi_path = it->second.substr();
+                break;
+            }
+        }
+        if(cgi_path.empty()){
+            _error = INTERNAL_SERVER_ERROR;
+            return;
+        }
+        std::ifstream file(cgi_script.c_str());
+        if(!file.good()){
+            _error = INTERNAL_SERVER_ERROR;
+            return;
+        }
+        // std::stringstream ss;
+        // ss << process_cgi(cgi_script, cgi_path, );
+        // std::string fdStr = ss.str();
+        // std::ifstream file("/proc/self/fd/" + fdStr);
+        // std::string line;
+        // while (std::getline(file, line)) {
+        //     _content += line;
+        // }
+        // file.close();
+        // return ;
+    }
     // std::cout << request.getPath() <<std::endl;
     struct stat file_info;
     
@@ -463,12 +493,12 @@ void Response::_handlePost(Request &request, ServerBlock &server)
         }
         else
         {
-            if(server._locations.at("/uploads/")._allowed_methods._allow_post == false){
+            if(location->second._allowed_methods._allow_post == false){
                 _error = NOT_ALLOWED;
                 return;
             }
             filename = getCurrentDateTime();
-            full_path = server._locations.at("/uploads/")._alias;
+            full_path = location->second._alias;
             filepath = full_path + filename;
             content_start = 0;
             content_end = request.getBody().length();
@@ -706,7 +736,7 @@ to do:
 // <ARGUMENT 1 etc.>
 
 // Takes two lines and allocates them into one, skips line 2 if its \0
-char *newlinecombine(const char *line1, const char *line2) {
+static char *newlinecombine(const char *line1, const char *line2) {
     char *newline = (char*)malloc(256 * sizeof(char));
     int i = 0; 
     int j = 0;
@@ -723,7 +753,7 @@ char *newlinecombine(const char *line1, const char *line2) {
     return newline;
 }
 
-char* itoa(int num) {
+static char* itoa(int num) {
     char *str;
     int i = 10;
     int minus = 0;
