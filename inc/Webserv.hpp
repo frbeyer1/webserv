@@ -11,8 +11,9 @@
 #include <sys/epoll.h>
 #include <sys/stat.h>
 #include <netinet/in.h>
-
 #include <arpa/inet.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include <iostream>
 #include <sstream>
@@ -25,9 +26,11 @@
 #include <vector>
 
 #include "ConfigParser.hpp"
-#include "Server.hpp"
-#include "HttpRequest.hpp"
+#include "ServerBlock.hpp"
+#include "Request.hpp"
 #include "Logger.hpp"
+#include "Socket.hpp"
+
 
 /*   Logger Settings   */
 #define DEFAULT_LOGGER_STATE                        ON              // ON or OFF
@@ -50,7 +53,7 @@
 #define BACKLOG                                     128
 #define MAX_URI_LENGTH                              4096
 #define MAX_HEADER_LENGTH                           8192
-#define CLIENT_CONNECTION_TIMEOUT                   10
+#define CLIENT_CONNECTION_TIMEOUT                   60
 #define REQUEST_READ_SIZE                           4096
 #define RESPONSE_WRITE_SIZE                         4096
 
@@ -64,6 +67,7 @@
 #define FORBIDDEN                                   403
 #define NOT_FOUND                                   404
 #define NOT_ALLOWED                                 405
+#define LENGTH_REQUIRED                             411
 #define PAYLOAD_TOO_LARGE                           413
 #define URI_TOO_LONG                                414
 #define UNSUPPORTED_MEDIA_TYPE                      415

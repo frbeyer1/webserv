@@ -1,13 +1,12 @@
 NAME	= webserv
 
 SRC		=	src/main.cpp			\
-			src/Server.cpp			\
 			src/ServerManager.cpp	\
 			src/Logger.cpp			\
-			src/HttpRequest.cpp		\
+			src/Request.cpp		\
 			src/ConfigParser.cpp	\
-			src/Client.cpp			\
 			src/Response.cpp		\
+			src/Socket.cpp			\
 
 OBJ		= $(SRC:.cpp=.o)
 

@@ -9,9 +9,10 @@ class Server;
 class ServerManager
 {
 private:
-    std::map<int, Server>   _server_map;
-    std::map<int, Client>   _client_map;
-    int                     _epoll_fd;
+    std::vector<ServerBlock>    _server_blocks;
+    std::map<int, Socket>       _socket_map;
+    std::map<int, Client>       _client_map;
+    int                         _epoll_fd;
 
 // Private member functions
     void    _acceptNewConnection(int fd);

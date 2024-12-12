@@ -1,14 +1,14 @@
-#include "../inc/HttpRequest.hpp"
+#include "../inc/Request.hpp"
 
 // =============   Constructor   ============= //
-HttpRequest::HttpRequest()
+Request::Request()
 {
-    _client_max_body_size = 0;
     clear();
+    _socket = NULL;
 }
 
 // ===========   Copy Constructor   ========== //
-HttpRequest::HttpRequest(const HttpRequest &rhs) : _ss(rhs._ss.str())
+Request::Request(const Request &rhs) : _ss(rhs._ss.str())
 {
     if (this != &rhs)
 	{
@@ -33,71 +33,85 @@ HttpRequest::HttpRequest(const HttpRequest &rhs) : _ss(rhs._ss.str())
         _body_flag = rhs._body_flag;
         _chunked_transfer_flag = rhs._chunked_transfer_flag;
         _client_max_body_size = rhs._client_max_body_size;
+        _server_blocks = rhs._server_blocks;
+        _server = rhs._server;
+        _socket = rhs._socket;
 	}
 	return ;
 }
 
 // ============   Deconstructor   ============ //
-HttpRequest::~HttpRequest()
+Request::~Request()
 {
 }
 
 // ==============   Setters   ================ //
-void    HttpRequest::setClientMaxBodySize(size_t client_max_body_size)
+void    Request::setServerBlocks(std::vector<ServerBlock> &server_blocks)
 {
-    _client_max_body_size = client_max_body_size;
+    _server_blocks = server_blocks;
+}
+
+void    Request::setSocket(Socket *socket)
+{
+    _socket = socket;
 }
 
 // ==============   Getters   ================ //
-int HttpRequest::getError() const
+int Request::getError() const
 {
     return _error;
 }
 
-int HttpRequest::getVersionMajor() const
+int Request::getVersionMajor() const
 {
     return _version_major;
 }
-int HttpRequest::getVersionMinor() const
+int Request::getVersionMinor() const
 {
     return _version_minor;
 }
 
-HttpMethod    HttpRequest::getMethod() const
+HttpMethod    Request::getMethod() const
 {
     return _method;
 }
 
-ParsingState    HttpRequest::getParsingState() const
+ParsingState    Request::getParsingState() const
 {
     return _state;
 }
-const std::string   &HttpRequest::getMethodStr() const
+
+ServerBlock*  Request::getServerBlock() const
+{
+    return _server;
+}
+
+const std::string   &Request::getMethodStr() const
 {
     return _method_str;
 }
 
-const std::string   &HttpRequest::getPath() const
+const std::string   &Request::getPath() const
 {
     return _path;
 }
 
-const std::string   &HttpRequest::getQuery() const
+const std::string   &Request::getQuery() const
 {
     return _query;
 }
 
-const std::string   &HttpRequest::getFragment() const
+const std::string   &Request::getFragment() const
 {
     return _fragment;
 }
 
-const std::string   &HttpRequest::getBody() const
+const std::string   &Request::getBody() const
 {
     return _body;
 }
 
-const std::map<std::string, std::string>    &HttpRequest::getHeaders() const
+const std::map<std::string, std::string>    &Request::getHeaders() const
 {
     return _headers;
 }
@@ -223,11 +237,45 @@ static void    trimFieldValueStr(std::string &string)
     return;
 }
 
+// ======   Private Member functions   ======= //
+/*
+finding the correct server for the request
+*/
+void    Request::_findServerBlock(std::string host)
+{
+    // search for server_block with the host header
+    for (size_t i = 0; i < _server_blocks.size(); i++)
+    {
+        const std::vector<std::string> &server_names = _server_blocks[i]._server_names;
+        for (size_t j = 0; j < server_names.size(); j++)
+        {
+            if (server_names[j] == host)
+            {
+                _server = &_server_blocks[i];
+                _client_max_body_size = _server_blocks[i]._client_max_body_size;
+                return;
+            }
+        }
+    }
+    // search for default server block
+    for (size_t i = 0; i < _server_blocks.size(); i++)
+    {
+        if (_server_blocks[i]._host == _socket->getHost() && _server_blocks[i]._port == _socket->getPort())
+        {
+            _server = &_server_blocks[i];
+            _client_max_body_size = _server_blocks[i]._client_max_body_size;
+            return;
+        }
+    }
+    if (_server == NULL)
+        _error = BAD_REQUEST;
+}
+
 // ==========   Member functions   =========== //
 /*
 clears and resets all variables (except _client_max_body_size) in the object
 */
-void    HttpRequest::clear()
+void    Request::clear()
 {
     _state = Empty_Line;
     _error = OK;
@@ -248,6 +296,8 @@ void    HttpRequest::clear()
     _chunk_len = 0;
     _body_flag = false;
     _chunked_transfer_flag = false;
+    _client_max_body_size = 0;
+    _server = NULL;
     _ss.str("");
     _ss.clear();
     _headers.clear();
@@ -256,7 +306,7 @@ void    HttpRequest::clear()
 /*
 partial parses the http Request octet by octet
 */
-void    HttpRequest::parse(uint8_t *data, size_t size)
+void    Request::parse(uint8_t *data, size_t size)
 {
     uint8_t ch;
 
@@ -563,6 +613,17 @@ void    HttpRequest::parse(uint8_t *data, size_t size)
                 return;
             }
             _state = Parsing_Finished;
+            if (!_headers.count("Host"))
+	        {
+		        _error = BAD_REQUEST;
+                return;
+	        }
+            else
+            {
+                _findServerBlock(_headers.find("Host")->second);
+                if (_error != OK)
+                return ;
+            }
             if (_headers.count("Transfer-Encoding"))
             {
                 if((_version_major == 1 && _version_minor == 0) || _version_major == 0)
@@ -605,6 +666,11 @@ void    HttpRequest::parse(uint8_t *data, size_t size)
                     _body_flag = true;
                     _state = Message_Body;
                 }   
+            }
+            else if (_method == POST)
+            {
+                _error = LENGTH_REQUIRED;
+                return ;
             }
             break;
         case Chunk_Length:

@@ -2,7 +2,7 @@
 
 #include "Webserv.hpp"
 
-struct cgireturn {
+struct CgiReturn {
     int fdread;
     char **newenv;
 };
@@ -15,16 +15,17 @@ class Response
         std::string _connection;
         std::string _content;
         std::string _content_type;
-        std::string _content_length;
         std::string _location;
 
     // Private member functions 
-        void    _setConnection(HttpRequest& request);
-        void    _setErrorPage(Server &server);
-        void    _buildResponseStr(HttpRequest &request, Server &sever);
-        void    _handleGet(HttpRequest &request, Server &server);
-        void    _handlePost(HttpRequest &request, Server &server);
-        void    _handleDelete(HttpRequest &request, Server &server);
+        void        _setConnection(Request& request);
+        void        _setErrorPage(ServerBlock &server);
+        void        _buildResponseStr(Request &request, ServerBlock &sever);
+        void        _handleGet(Request &request, ServerBlock &server);
+        void        _handlePost(Request &request, ServerBlock &server);
+        void        _handleDelete(Request &request, ServerBlock &server);
+        CgiReturn*  _process_cgi(char **cgifile, char **env, int clientfd, Request &ref1, ServerBlock &ref2);
+        char**      _buildenv(char *cgifile, char **env,int clientfd, Request &ref1, ServerBlock &ref2);
 
     public:
     // Constructor
@@ -35,16 +36,12 @@ class Response
     
     // Getters
         int                 getError() const;
-        const std::string   &getContentType() const;
-        const std::string   &getContentLength() const;
         const std::string   &getResponse() const;
         const std::string   &getConnection() const;
 
     // Member functions
-        void        buildResponse(HttpRequest &request, Server &server);
+        void        buildResponse(Request &request);
         void        trimResponse(int i);
         void        clear();
-
-        // cgireturn *process_cgi(char **cgifile, char **env, Client &ref1);
     
 };

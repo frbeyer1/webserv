@@ -40,32 +40,13 @@ static void    addServerToEpollInstance(int epoll_fd, int add_fd)
     }
 }
 
-/*
-Checks for duplicates in the server list (same Host and Port)
-*/
-static bool    checkDuplicates(std::vector<Server> &servers)
-{
-    bool    duplicate;
-
-    duplicate = false;
-    for (size_t i = 0; i < servers.size(); ++i)
-    {
-        for (size_t j = i + 1; j < servers.size(); ++j)
-        {
-            if (servers[i].getHost() == servers[j].getHost() && servers[i].getPort() == servers[j].getPort())
-                duplicate = true;
-        }
-    }
-    return (duplicate);
-}
-
 // ======   Private member functions   ======= //
 /*
 accepting a new connection:
     - adding the new client into the client_map 
     - adding client_fd to the epoll instance
 */
-void    ServerManager::_acceptNewConnection(int server_fd)
+void    ServerManager::_acceptNewConnection(int socket_fd)
 {
     if (_client_map.size() >= MAX_CONNECTIONS)
     {
@@ -73,17 +54,20 @@ void    ServerManager::_acceptNewConnection(int server_fd)
         return ;
     }
 
-    Client  client(_server_map[server_fd]);
-    int     client_fd;
+    // initializing the Client struct
+    Client  client;
 
-    client_fd = _server_map[server_fd].acceptConnection();
-    client.setClientFd(client_fd);
-    client.setClientAddress(_server_map[server_fd].getSocketAddress());
-    if (_client_map.count(client_fd) > 0)
-        _client_map.erase(client_fd);
-    _client_map.insert(std::make_pair(client_fd, client));
-    addToEpollInstance(_epoll_fd, client_fd);
-    Logger::log(CYAN, INFO, "Accpted new connection on fd[%i] from %s", client_fd, sockaddrToIpString(client.getClientAddress()).c_str());
+    client.socket = &_socket_map[socket_fd];
+    client._client_fd = client.socket->acceptConnection();
+    client.request.setSocket(client.socket);
+    client.request.setServerBlocks(_server_blocks);
+    client._client_address = client.socket->getSocketAddress();
+    if (_client_map.count(client._client_fd) > 0)
+        _client_map.erase(client._client_fd);
+    client._last_msg_time = time(NULL);
+    _client_map.insert(std::make_pair(client._client_fd, client));
+    addToEpollInstance(_epoll_fd, client._client_fd);
+    Logger::log(CYAN, INFO, "Accpted new connection on fd[%i] from address[%s]", client._client_fd, inAddrToIpString(client._client_address.sin_addr.s_addr).c_str());
 }
 
 /*
@@ -117,7 +101,7 @@ void    ServerManager::_checkTimeout()
 
     for (std::map<int, Client>::iterator it = _client_map.begin(); it != _client_map.end(); it++)
     {
-        if (time(NULL) - it->second.getLastMsgTime() > CLIENT_CONNECTION_TIMEOUT)
+        if (time(NULL) - it->second._last_msg_time > CLIENT_CONNECTION_TIMEOUT)
             timeouts.push_back(it->first);
     }
     for (size_t i = 0; i < timeouts.size(); i++)
@@ -137,7 +121,7 @@ void    ServerManager::_readRequest(Client &client)
 {
     uint8_t buffer[REQUEST_READ_SIZE];
     int     bytes_read = 0;
-    int     fd = client.getClientFd();
+    int     fd = client._client_fd;
 
     bytes_read = read(fd, buffer, REQUEST_READ_SIZE);
     if (bytes_read == 0)
@@ -154,16 +138,14 @@ void    ServerManager::_readRequest(Client &client)
     }
     else
     {
-        client.setLastMsgTime(time(NULL));
+        client._last_msg_time = time(NULL);
         client.request.parse(buffer, bytes_read);
         std::memset(buffer, 0, sizeof(buffer));
     }
     if (client.request.getParsingState() == Parsing_Finished || client.request.getError() != OK)
     {
-        Server *ptr = client.server;
-
         Logger::log(CYAN, INFO, "Request received from client fd[%i] with method[%s] and URI[%s]", fd, client.request.getMethodStr().c_str(), client.request.getPath().c_str());
-        client.response.buildResponse(client.request, *ptr);
+        client.response.buildResponse(client.request);
         Logger::log(GREY, DEBUG, "Finished response building");
         struct epoll_event event;
 
@@ -187,7 +169,7 @@ sending the Response to the client:
 void    ServerManager::_sendResponse(Client &client)
 {
     int bytes_send = 0;
-    int fd = client.getClientFd();
+    int fd = client._client_fd;
 
     const std::string &response = client.response.getResponse();
 
@@ -197,13 +179,13 @@ void    ServerManager::_sendResponse(Client &client)
         bytes_send = write(fd, response.c_str(), response.size());
     if (bytes_send < 0)
     {
-        Logger::log(RED, ERROR, "Write error on fd[%i]: %s", fd, strerror(errno));
+        Logger::log(RED, ERROR, "Write error on fd[%i]: client closed Connection", fd);
         _closeConnection(fd);
         return ;
     }
     if (bytes_send == 0 || (size_t)bytes_send == response.size())
     {
-        Logger::log(CYAN, INFO, "Response send to client fd[%i] with code[%i]", client.getClientFd(), client.response.getError());
+        Logger::log(CYAN, INFO, "Response send to client fd[%i] with code[%i]", client._client_fd, client.response.getError());
         if (client.response.getConnection() == "keep-alive")
         {
             struct epoll_event event;
@@ -229,32 +211,60 @@ void    ServerManager::_sendResponse(Client &client)
 /*
 setting up all server
     - parsing the config file
-    - checking for duplicates in the server list
-    - setting up all servers and adding them to the _server_map
+    - setting up all sockets and adding them to the _socket_map
 */
 void    ServerManager::setup(std::string config)
 {
     // parsing of the config file
-    std::vector<Server> servers;
-    ConfigParser        parser(servers);
+    ConfigParser        parser(_server_blocks);
 
     parser.parse(config);
     Logger::log(GREY, DEBUG, "Finished config file parsing");
 
-    // checking for duplicates in the server list
-    Logger::log(WHITE, INFO, "Setting up servers ...");
-    if (checkDuplicates(servers))
+    if (_server_blocks.size() == 0)
     {
-        Logger::log(RED, ERROR, "Could not setup servers, because of duplicates in config file");
+        Logger::log(RED, ERROR, "Config File: no server block found ( empty file ? )");
         exit(EXIT_FAILURE);
     }
 
-    // setup the servers and adding to the _server_map
-    for (std::vector<Server>::iterator it = servers.begin(); it != servers.end(); it++)
+    // find all needed sockets
+    std::map<uint16_t, in_addr_t> map;
+
+    for (size_t i = 0; i < _server_blocks.size(); i++)
+        map.insert(std::pair<uint16_t, in_addr_t>(_server_blocks[i]._port, _server_blocks[i]._host));
+
+    // set host and port for all needed sockets
+    std::vector<Socket> sockets;
+
+    for (std::map<uint16_t, in_addr_t>::iterator it = map.begin(); it != map.end(); it++) 
     {
-        it->setup();
-        _server_map.insert(std::pair<int, Server>(it->getServerFd(), *it));
-        Logger::log(WHITE, INFO, "Server setup: ServerName[%s] Host[%s] Port[%i]", it->getServerName().c_str(), it->getIp().c_str(), it->getPort());
+        Socket socket;
+
+        socket.setPort(it->first);
+        socket.setHost(it->second);
+        sockets.push_back(socket);
+    }
+
+    // setup all sockets and add to _socket_map
+    Logger::log(WHITE, INFO, "Setting up sockets ...");
+    for (size_t i = 0; i < sockets.size(); i++)
+    {
+        sockets[i].setup();
+        _socket_map.insert(std::pair<int, Socket>(sockets[i].getSocketFd(), sockets[i]));
+        Logger::log(WHITE, INFO, "Socket setup: Host[%s] Port[%i]", inAddrToIpString(htonl(sockets[i].getHost())).c_str(), sockets[i].getPort());
+    }
+
+    // assign sockets to servers
+    for (size_t i = 0; i < _server_blocks.size(); i++)
+    {
+        for (std::map<int, Socket>::iterator it = _socket_map.begin(); it != _socket_map.end(); it++)
+        {
+            if (it->second.getHost() == _server_blocks[i]._host && it->second.getPort() == _server_blocks[i]._port)
+            {
+                _server_blocks[i]._socket = &it->second;
+                break ;
+            }
+        }
     }
     Logger::log(GREY, DEBUG, "Setting up servers finished");
 }
@@ -282,9 +292,9 @@ void    ServerManager::boot()
     }
 
     // adds all server_fds to epoll instance and starts listening on the server sockets
-    for (std::map<int, Server>::iterator it = _server_map.begin(); it != _server_map.end(); it++)
+    for (std::map<int, Socket>::iterator it = _socket_map.begin(); it != _socket_map.end(); it++)
     {
-        addServerToEpollInstance(_epoll_fd, it->second.getServerFd());
+        addServerToEpollInstance(_epoll_fd, it->second.getSocketFd());
         it->second.startListening();
     }
     // main server loop
@@ -303,8 +313,8 @@ void    ServerManager::boot()
         for (int i = 0; i < num_events; i++)
         {
             int fd = event_list[i].data.fd;
-            
-            if (_server_map.count(fd))
+
+            if (_socket_map.count(fd))
                 _acceptNewConnection(fd);
             else if (_client_map.count(fd) && event_list[i].events & EPOLLIN)
                 _readRequest(_client_map[fd]);

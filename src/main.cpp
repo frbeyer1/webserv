@@ -6,7 +6,7 @@ void sigpipe_handler(int signum)
     (void)signum;
 }
 
-int main(int argc, char **argv)
+int main(int argc, char ** argv)
 {
     signal(SIGPIPE, sigpipe_handler);
     std::string config;
@@ -46,3 +46,5 @@ int main(int argc, char **argv)
 // 
 // you can’t execve another web server
 // 
+// print server setup with names
+// convert host to ip str in socket stup

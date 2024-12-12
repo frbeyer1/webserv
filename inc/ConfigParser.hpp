@@ -2,7 +2,7 @@
 
 #include "Webserv.hpp"
 
-class Server;
+class ServerBlock;
 
 enum Directive
 {
@@ -25,9 +25,9 @@ enum Directive
 class ConfigParser
 {
 private:
-    std::vector<Server>     &_server_vector;
-    std::string             _content;
-    size_t                  _i;
+    size_t                      _i;
+    std::string                 _content;
+    std::vector<ServerBlock>&   _server_blocks;
 
 // Private Member functions
     void        _readConfig(std::string config);
@@ -37,13 +37,13 @@ private:
     std::string _getParameter();
     Directive   _getDirectiveType();
     std::string _getLocationPath();
-    void        _getLocation(Server &server);
-    void        _getDirective(Server &server);
-
+    void        _getLocation(ServerBlock &server_block);
+    void        _getDirective(ServerBlock &server_block);
+    void        _setDefaultValues(ServerBlock &server_block);
 
 public:
 // Constructor
-    ConfigParser(std::vector<Server> &server_vector);
+    ConfigParser(std::vector<ServerBlock> &server_blocks);
 
 // Deconstructor
     ~ConfigParser();
@@ -55,4 +55,5 @@ public:
 
 // Utils
 uint32_t    ipStringToNumeric(const std::string& ip);
-std::string sockaddrToIpString(const struct sockaddr_in &addr);
+// std::string sockaddrToIpString(const struct sockaddr_in &addr);
+std::string inAddrToIpString(in_addr_t addr);

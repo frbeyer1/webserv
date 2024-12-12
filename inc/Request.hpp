@@ -49,7 +49,9 @@ enum ParsingState
     Parsing_Finished,
 };
 
-class HttpRequest
+class Socket;
+
+class Request
 {
 private:
     ParsingState                                    _state;
@@ -74,19 +76,22 @@ private:
     bool                                            _body_flag;
     bool                                            _chunked_transfer_flag;
     size_t                                          _client_max_body_size;
+    std::vector<ServerBlock>                        _server_blocks;
+    ServerBlock*                                    _server;
+    Socket*                                         _socket;
+
+// Private Member functions
+    void                                        _findServerBlock(std::string host);
 
 public:
 // Constructor
-    HttpRequest();
+    Request();
 
 // Copy Constructor
-    HttpRequest(const HttpRequest &rhs);
+    Request(const Request &rhs);
 
 // Deconstructor
-    ~HttpRequest();
-
-// Setters
-    void                                        setClientMaxBodySize(size_t client_max_body_size);
+    ~Request();
 
 // Getters
     int                                         getError() const;
@@ -94,12 +99,17 @@ public:
     int                                         getVersionMinor() const;
     ParsingState                                getParsingState() const;
     HttpMethod                                  getMethod() const;
-    const std::string                           &getMethodStr() const;
-    const std::string                           &getPath() const;
-    const std::string                           &getQuery() const;
-    const std::string                           &getFragment() const;
-    const std::string                           &getBody() const;
-    const std::map<std::string, std::string>    &getHeaders() const;
+    ServerBlock*                                getServerBlock() const;
+    const std::string&                          getMethodStr() const;
+    const std::string&                          getPath() const;
+    const std::string&                          getQuery() const;
+    const std::string&                          getFragment() const;
+    const std::string&                          getBody() const;
+    const std::map<std::string, std::string>&   getHeaders() const;
+
+// Setters
+    void                                        setServerBlocks(std::vector<ServerBlock> &server_blocks);
+    void                                        setSocket(Socket* socket);
 
 // Member functions
     void                                        parse(uint8_t *data, size_t size);

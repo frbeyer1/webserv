@@ -1,7 +1,7 @@
 #include "../inc/ConfigParser.hpp"
 
 // =============   Constructor   ============= //
-ConfigParser::ConfigParser(std::vector<Server> &server_vector) : _server_vector(server_vector)
+ConfigParser::ConfigParser(std::vector<ServerBlock> &server_blocks) : _server_blocks(server_blocks)
 {
     _content = "";
     _i = 0;
@@ -40,11 +40,11 @@ uint32_t ipStringToNumeric(const std::string& ip)
 }
 
 /*
-return and sockaddr_in as an readable ip string
+returns an IP string from an in_addr_t
 */
-std::string sockaddrToIpString(const struct sockaddr_in &addr)
+std::string inAddrToIpString(in_addr_t addr)
 {
-    unsigned char* ip = (unsigned char*)&addr.sin_addr.s_addr;
+    unsigned char* ip = (unsigned char*)&addr;
     std::ostringstream oss;
 
     oss << (int)ip[0] << "." 
@@ -52,13 +52,13 @@ std::string sockaddrToIpString(const struct sockaddr_in &addr)
         << (int)ip[2] << "." 
         << (int)ip[3];
     
-    return (oss.str());
+    return oss.str();
 }
 
 /*
-parses an parameter string of the config and sets root on the corresponding server
+parses an parameter string of the config and sets root on the corresponding server_block
 */
-static void handleRoot(std::string parameter, Server &server)
+static void handleRoot(std::string parameter, ServerBlock &server_block)
 {
     struct stat buf;
 
@@ -73,7 +73,7 @@ static void handleRoot(std::string parameter, Server &server)
         exit(EXIT_FAILURE);
     }
     if (S_ISDIR(buf.st_mode))
-        server.setRoot(parameter); 
+        server_block._root = parameter;
     else
     {
         Logger::log(RED, ERROR, "Config file misconfigured: root directive: is no directory");
@@ -82,9 +82,9 @@ static void handleRoot(std::string parameter, Server &server)
 }
 
 /*
-parses an parameter string of the config and sets port and host on the corresponding server
+parses an parameter string of the config and sets port and host on the corresponding server_block
 */
-static void handleListen(std::string parameter, Server &server)
+static void handleListen(std::string parameter, ServerBlock &server_block)
 {
     std::string port_str;
     std::string ip_str;
@@ -127,8 +127,8 @@ static void handleListen(std::string parameter, Server &server)
         Logger::log(RED, ERROR, "Config file misconfigured: listen directive: IP invalid: %s", e.what());
         exit(EXIT_FAILURE);
     }
-    server.setHost(host);
-    server.setIp(ip_str);
+    server_block._host = host;
+    server_block._ip = ip_str;
     for (size_t i = 0; i < port_str.length(); i++)
     {
         if (!isdigit(port_str[i]))
@@ -143,11 +143,11 @@ static void handleListen(std::string parameter, Server &server)
         Logger::log(RED, ERROR, "Config file misconfigured: listen directive: port invalid");
         exit(EXIT_FAILURE);
     }
-    server.setPort(port);
+    server_block._port = port;
 }
 
 /*
-parses an parameter string of the config and sets the server_name on the corresponding server
+parses an parameter string of the config and sets the server_name on the corresponding server_block
 valid characters:
     - Letters (a-z, A-Z)
     - Digits (0-9)
@@ -156,24 +156,35 @@ valid characters:
     - Tildes (~)
     - Underscores (_)
 */
-static void handleServerName(std::string parameter, Server &server)
+static void handleServerNames(std::string parameter, ServerBlock &server_block)
 {
+    std::string name;
+
     for (size_t i = 0; i < parameter.length(); i++)
     {
-        if ((parameter[i] < 'a' || parameter[i] > 'z') && (parameter[i] < 'A' || parameter[i] > 'Z') 
+        if (iswspace(parameter[i]))
+        {
+            server_block._server_names.push_back(name);
+            name.clear();
+            while (iswspace(parameter[i]))
+                i++;
+        }
+        else if ((parameter[i] < 'a' || parameter[i] > 'z') && (parameter[i] < 'A' || parameter[i] > 'Z') 
             && (parameter[i] < '0' || parameter[i] > '9') && parameter[i] != '.' && parameter[i] != '-' && parameter[i] != '~' && parameter[i] != '_' )
         {
             Logger::log(RED, ERROR, "Config file misconfigured: server_name directive: invalid character");
             exit(EXIT_FAILURE);
         }
+        else
+            name.push_back(parameter[i]);
+        
     }
-    server.setServerName(parameter);
 }
 
 /*
-parses an parameter string of the config and sets the client_max_body_size on the corresponding server
+parses an parameter string of the config and sets the client_max_body_size on the corresponding server_block
 */
-static void handleClientMaxBodySize(std::string parameter, Server &server)
+static void handleClientMaxBodySize(std::string parameter, ServerBlock &server_block)
 {
     size_t  size;
 
@@ -186,13 +197,13 @@ static void handleClientMaxBodySize(std::string parameter, Server &server)
         }
     }
     size = atoi(parameter.c_str());
-    server.setClientMaxBodySize(size);
+    server_block._client_max_body_size = size;
 }
 
 /*
-parses an parameter string of the config and sets custom error pages on the corresponding server
+parses an parameter string of the config and sets custom error pages on the corresponding server_block
 */
-static void handleErrorPage(std::string parameter, Server &server)
+static void handleErrorPage(std::string parameter, ServerBlock &server_block)
 {
     int         status_code;
     std::string status_code_str;
@@ -231,7 +242,7 @@ static void handleErrorPage(std::string parameter, Server &server)
         else
             page_path.push_back(parameter[i]);
     }
-    page_path = server.getRoot() + page_path;
+    page_path = server_block._root + page_path;
     if (stat(page_path.c_str(), &buf) != 0 || S_ISREG(buf.st_mode) == 0)
     {
         Logger::log(RED, ERROR, "Config file misconfigured: error_page directive: error page path invalid");
@@ -242,15 +253,15 @@ static void handleErrorPage(std::string parameter, Server &server)
         Logger::log(RED, ERROR, "Config file misconfigured: error_page directive: error page has no read rights");
         exit(EXIT_FAILURE);
     }
-    if (server.getErrorPages().count(status_code))
-        server.getErrorPages().erase(status_code);
-    server.setErrorPage(status_code, page_path);
+    if (server_block._error_pages.count(status_code))
+        server_block._error_pages.erase(status_code);
+    server_block._error_pages.insert(std::pair<int, std::string>(status_code, page_path));
 }
 
 /*
 parses an parameter string and look for vaild Http Methods and adds it to location
 */
-void handleAllowedMethods(std::string parameter, location_t &location)
+void handleAllowedMethods(std::string parameter, Location &location)
 {
     std::string  method;
     int         start = 0;
@@ -261,11 +272,11 @@ void handleAllowedMethods(std::string parameter, location_t &location)
         {
             method = parameter.substr(start, i - start);
             if (method == "GET")
-                location.allowed_methods.allow_get = true;
+                location._allowed_methods._allow_get = true;
             else if (method == "POST")
-                location.allowed_methods.allow_post = true;
+                location._allowed_methods._allow_post = true;
             else if (method == "DELETE")
-                location.allowed_methods.allow_delete = true;
+                location._allowed_methods._allow_delete = true;
             else
             {
                 Logger::log(RED, ERROR, "Config file misconfigured: allowed_method directive: invalid method");
@@ -281,9 +292,9 @@ void handleAllowedMethods(std::string parameter, location_t &location)
 /*
 sets the redirection string of the location
 */
-static void handleRedirection(std::string parameter, location_t &location)
+static void handleRedirection(std::string parameter, Location &location)
 {
-    location.redirection = parameter;
+    location._redirection = parameter;
 }
 
 /*
@@ -291,9 +302,9 @@ Checks the alias parameter:
     - is the parameter an directory
     - does the directory have read rights
 */
-static void handleAlias(std::string parameter, location_t &location, Server &server)
+static void handleAlias(std::string parameter, Location &location, ServerBlock &server_block)
 {
-    std::string alias_path = server.getRoot() + parameter;
+    std::string alias_path = server_block._root + parameter;
     struct stat buf;
 
     if (alias_path[alias_path.size() - 1] != '/')
@@ -313,7 +324,7 @@ static void handleAlias(std::string parameter, location_t &location, Server &ser
             Logger::log(RED, ERROR, "Config file misconfigured: alias directive: directory has no read rights");
             exit(EXIT_FAILURE);
         }
-        location.alias = alias_path;
+        location._alias = alias_path;
     }
     else
     {
@@ -326,12 +337,12 @@ static void handleAlias(std::string parameter, location_t &location, Server &ser
 Checks the autoindex parameter:
  - either "on" orr "off"
 */
-static void handleAutoIndex(std::string parameter, location_t &location)
+static void handleAutoIndex(std::string parameter, Location &location)
 {
     if (parameter == "off")
-        location.autoindex = false;
+        location._autoindex = false;
     else if (parameter == "on")
-        location.autoindex = true;
+        location._autoindex = true;
     else
     {
         Logger::log(RED, ERROR, "Config file misconfigured: autoindex directive: invalid parameter (either 'on' or 'off')");
@@ -344,9 +355,9 @@ Checks the index parameter inside an location:
  - is the file there? (dependent on root)
  - and does it has read rights?
 */
-static void handleIndex(std::string parameter, location_t &location, Server &server)
+static void handleIndex(std::string parameter, Location &location, ServerBlock &server_block)
 {
-    std::string index = server.getRoot() + parameter;
+    std::string index = server_block._root + parameter;
     struct stat buf;
 
     if (stat(index.c_str(), &buf) != 0 || S_ISREG(buf.st_mode) == 0)
@@ -359,7 +370,7 @@ static void handleIndex(std::string parameter, location_t &location, Server &ser
         Logger::log(RED, ERROR, "Config file misconfigured: index directive: index file has no read rights");
         exit(EXIT_FAILURE);
     }
-    location.index = index;
+    location._index = index;
 }
 
 /*
@@ -367,9 +378,9 @@ Checks the upload directive:
  - checks if file is there and an directory
  - checks for write rights for the directory 
 */
-static void handleUpload(std::string parameter, location_t &location, Server &server)
+static void handleUpload(std::string parameter, Location &location, ServerBlock &server_block)
 {
-    std::string upload_path = server.getRoot() + parameter;
+    std::string upload_path = server_block._root + parameter;
     struct stat buf;
 
     if (stat(upload_path.c_str(), &buf) != 0)
@@ -384,7 +395,7 @@ static void handleUpload(std::string parameter, location_t &location, Server &se
             Logger::log(RED, ERROR, "Config file misconfigured: upload directive: directory has no write rights");
             exit(EXIT_FAILURE);
         }
-        location.upload = upload_path;
+        location._upload = upload_path;
     }  
     else
     {
@@ -396,7 +407,7 @@ static void handleUpload(std::string parameter, location_t &location, Server &se
 /*
 sets cgi path and extension to the location
 */
-static void handleCgi(std::string parameter, location_t &location)
+static void handleCgi(std::string parameter, Location &location)
 {
     std::string extension, path;
     size_t i = 0;
@@ -424,7 +435,7 @@ static void handleCgi(std::string parameter, location_t &location)
         path.push_back(parameter[i]);
         i++;
     }
-    location.cgi.insert(std::make_pair(extension, path));
+    location._cgi.insert(std::make_pair(extension, path));
 }
 
 // ======   Private member functions   ======= //
@@ -459,6 +470,7 @@ void    ConfigParser::_skipComment()
             _i++;
         if (_content[_i] == '\n')
             _i++;
+        _skipWhiteSpaces();
         return ;
     }
 }
@@ -501,6 +513,7 @@ void    ConfigParser::_findNextServerBlock()
         }
         else
         {
+            // std::cout << _content[_i];
             Logger::log(RED, ERROR, "Config file misconfigured: found something else than server block");
             exit(EXIT_FAILURE);
         }
@@ -532,6 +545,8 @@ std::string ConfigParser::_getParameter()
             found = true;
             break;
         }
+        if (_content[_i] == '\n')
+            break;
     }
     if (!found)
     {
@@ -596,18 +611,18 @@ std::string    ConfigParser::_getLocationPath()
 }
 
 /*
-parses the location directive and adds it to the corresponding server
+parses the location directive and adds it to the corresponding server_block
 */
-void    ConfigParser::_getLocation(Server &server)
+void    ConfigParser::_getLocation(ServerBlock &server_block)
 {
     Directive   type;
-    location_t  location;
+    Location    location;
     std::string parameter;
     std::string path;
     bool        not_empty = false;
 
-    std::memset(&location.allowed_methods, 0, sizeof(allowed_methods_t));
-    std::memset(&location.autoindex, 0, sizeof(bool));
+    std::memset(&location._allowed_methods, 0, sizeof(AllowedMethods));
+    std::memset(&location._autoindex, 0, sizeof(bool));
     path = _getLocationPath();
     _skipWhiteSpaces();
     if (_content[_i] != '{')
@@ -634,16 +649,16 @@ void    ConfigParser::_getLocation(Server &server)
             handleRedirection(parameter, location);
             break;
         case ALIAS:
-            handleAlias(parameter, location, server);
+            handleAlias(parameter, location, server_block);
             break;
         case AUTOINDEX:
             handleAutoIndex(parameter, location);
             break;
         case INDEX:
-            handleIndex(parameter, location, server);
+            handleIndex(parameter, location, server_block);
             break;
         case UPLOAD:
-            handleUpload(parameter, location, server);
+            handleUpload(parameter, location, server_block);
             break;
         case CGI:
             handleCgi(parameter, location);
@@ -660,13 +675,13 @@ void    ConfigParser::_getLocation(Server &server)
     }
     _i++;
     if (not_empty)
-        server.setLocation(path, location);
+        server_block._locations.insert(std::pair<std::string, Location>(path, location));
 }
 
 /*
-gets the next directive in the _content string and sets the setting to the corresponding server
+gets the next directive in the _content string and sets the setting to the corresponding server_block
 */
-void    ConfigParser::_getDirective(Server &server)
+void    ConfigParser::_getDirective(ServerBlock &server_block)
 {
     Directive       type;
     std::string     parameter;
@@ -679,22 +694,22 @@ void    ConfigParser::_getDirective(Server &server)
     switch (type) {
 
     case ROOT:
-        handleRoot(parameter, server);
+        handleRoot(parameter, server_block);
         break;
     case LISTEN:
-        handleListen(parameter, server);
+        handleListen(parameter, server_block);
         break;
     case SERVER_NAME:
-        handleServerName(parameter, server);
+        handleServerNames(parameter, server_block);
         break;
     case CLIENT_MAX_BODY_SIZE:
-        handleClientMaxBodySize(parameter, server);
+        handleClientMaxBodySize(parameter, server_block);
         break;
     case ERROR_PAGE:
-        handleErrorPage(parameter, server);
+        handleErrorPage(parameter, server_block);
         break;
     case LOCATION:
-        _getLocation(server);
+        _getLocation(server_block);
         break;
     default:
         Logger::log(RED, ERROR, "Config file misconfigured: invalid directive in server block");
@@ -702,23 +717,44 @@ void    ConfigParser::_getDirective(Server &server)
     }
 }
 
+/*
+initialize the DEFAULT valeues for ServerBlock struct
+*/
+void    ConfigParser::_setDefaultValues(ServerBlock &server_block)
+{
+    server_block._ip = DEFAULT_HOST;
+    try
+    {
+        server_block._host = ipStringToNumeric(DEFAULT_HOST);
+    }
+    catch(const std::exception& e)
+    {
+        Logger::log(RED, ERROR, "Webserv header misconfigured: DEFAULT_HOST: ip invalid: %s", e.what());
+        exit(EXIT_FAILURE);
+    }
+    server_block._port = DEFAULT_PORT;
+    server_block._root = DEFAULT_ROOT;
+    server_block._client_max_body_size = DEFAULT_CLIENT_MAX_BODY_SIZE;
+    server_block._socket = NULL;
+}
+
 // ==========   Member functions   =========== //
 /*
-Parses the config file and adds every server block with the corresponding settings
-to the _server_vector
+Parses the config file and adds every server block with the corresponding settings to the _server_blocks vector
 */
 void    ConfigParser::parse(std::string config)
 {
     _readConfig(config);
 
-    for (; _i < _content.length(); _i++)
+    for (; _i < _content.length();)
     {
-        Server      server;
+        ServerBlock server_block;
 
+        _setDefaultValues(server_block);
         _findNextServerBlock();
         while (_i < _content.length())
         {
-            _getDirective(server);
+            _getDirective(server_block);
             _skipWhiteSpaces();
             if (_content[_i] == '}')
                 break;
@@ -729,7 +765,7 @@ void    ConfigParser::parse(std::string config)
             exit(EXIT_FAILURE);
         }
         _i++;
-        _server_vector.push_back(server);
+        _server_blocks.push_back(server_block);
         _skipWhiteSpaces();
     }
 }
