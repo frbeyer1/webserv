@@ -82,3 +82,5 @@
 #define WHITE                                       "\033[37m"
 #define CYAN                                        "\033[36m"
 #define GREY                                        "\033[90m"
+#define GREEN                                       "\033[32m"
+#define MAGENTA                                     "\033[35m"

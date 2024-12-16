@@ -106,7 +106,7 @@ void    ServerManager::_checkTimeout()
     }
     for (size_t i = 0; i < timeouts.size(); i++)
     {
-        Logger::log(YELLOW, INFO, "Client timeout: Client_FD[%i], closing connection ...", timeouts[i]);
+        Logger::log(CYAN, INFO, "Client timeout: Client_FD[%i], closing connection ...", timeouts[i]);
         _closeConnection(timeouts[i]);
     }
 }
@@ -144,7 +144,7 @@ void    ServerManager::_readRequest(Client &client)
     }
     if (client.request.getParsingState() == Parsing_Finished || client.request.getError() != OK)
     {
-        Logger::log(CYAN, INFO, "Request received from client fd[%i] with method[%s] and URI[%s]", fd, client.request.getMethodStr().c_str(), client.request.getPath().c_str());
+        Logger::log(GREEN, INFO, "Request received from client fd[%i] with method[%s] and URI[%s]", fd, client.request.getMethodStr().c_str(), client.request.getPath().c_str());
         client.response.buildResponse(client.request);
         Logger::log(GREY, DEBUG, "Finished response building");
         struct epoll_event event;
@@ -179,13 +179,13 @@ void    ServerManager::_sendResponse(Client &client)
         bytes_send = write(fd, response.c_str(), response.size());
     if (bytes_send < 0)
     {
-        Logger::log(RED, ERROR, "Write error on fd[%i]: client closed Connection", fd);
+        Logger::log(CYAN, INFO, "Could not write on fd[%i]: client closed Connection", fd);
         _closeConnection(fd);
         return ;
     }
     if (bytes_send == 0 || (size_t)bytes_send == response.size())
     {
-        Logger::log(CYAN, INFO, "Response send to client fd[%i] with code[%i]", client._client_fd, client.response.getError());
+        Logger::log(MAGENTA, INFO, "Response send to client fd[%i] with code[%i]", client._client_fd, client.response.getError());
         if (client.response.getConnection() == "keep-alive")
         {
             struct epoll_event event;

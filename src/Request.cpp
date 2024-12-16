@@ -243,28 +243,27 @@ finding the correct server for the request
 */
 void    Request::_findServerBlock(std::string host)
 {
-    // search for server_block with the host header
+    bool found_default = false;
+
     for (size_t i = 0; i < _server_blocks.size(); i++)
     {
+        // search for default server block
+        if (found_default == false && _server_blocks[i]._host == _socket->getHost() && _server_blocks[i]._port == _socket->getPort())
+        {
+            _server = &_server_blocks[i];
+            _client_max_body_size = _server_blocks[i]._client_max_body_size;
+            found_default = true;
+        }
+        // search for server_block with the host header
         const std::vector<std::string> &server_names = _server_blocks[i]._server_names;
         for (size_t j = 0; j < server_names.size(); j++)
         {
-            if (server_names[j] == host)
+            if (server_names[j] == host && _server_blocks[i]._host == _socket->getHost() && _server_blocks[i]._port == _socket->getPort())
             {
                 _server = &_server_blocks[i];
                 _client_max_body_size = _server_blocks[i]._client_max_body_size;
                 return;
             }
-        }
-    }
-    // search for default server block
-    for (size_t i = 0; i < _server_blocks.size(); i++)
-    {
-        if (_server_blocks[i]._host == _socket->getHost() && _server_blocks[i]._port == _socket->getPort())
-        {
-            _server = &_server_blocks[i];
-            _client_max_body_size = _server_blocks[i]._client_max_body_size;
-            return;
         }
     }
     if (_server == NULL)

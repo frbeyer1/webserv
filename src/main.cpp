@@ -32,14 +32,3 @@ int main(int argc, char ** argv)
 // -    if exit (need to close all open fds?)
 // -    check leaks
 
-// config parser:
-// -    make parsing cleaner and less code
-
-// HttpRequestParser:
-// -    parse the chunk extensions and trailer section or keep ignoring ???
-
-// Response
-//        -> multiple server blocks: find default server and check for mathcing server_name
-// -    do we support chuncked responses
-// 
-// 

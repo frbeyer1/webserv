@@ -686,25 +686,24 @@ void Response::buildResponse(Request &request)
 {
     ServerBlock *server = request.getServerBlock();
 
-    if (server == NULL)
-        std::cout << "NULL du idiot" << std::endl;
-
     _error = request.getError();
+    if (server != NULL && _error == OK)
+    {
+        switch (request.getMethod()) {
 
-    switch (request.getMethod()) {
-
-    case GET:
-        _handleGet(request, *server);
-        break;
-    case POST:
-        _handlePost(request, *server);
-        break;
-    case DELETE:
-        _handleDelete(request, *server);
-        break;
-    default:
-        _error = NOT_IMPLEMENTED;
-        break;
+        case GET:
+            _handleGet(request, *server);
+            break;
+        case POST:
+            _handlePost(request, *server);
+            break;
+        case DELETE:
+            _handleDelete(request, *server);
+            break;
+        default:
+            _error = NOT_IMPLEMENTED;
+            break;
+        }
     }
     _buildResponseStr(request, *server);
 }
