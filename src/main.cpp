@@ -32,3 +32,4 @@ int main(int argc, char ** argv)
 // -    if exit (need to close all open fds?)
 // -    check leaks
 
+// response: readStatus: still hardcoded => do nothing after post or send succsess Page ?

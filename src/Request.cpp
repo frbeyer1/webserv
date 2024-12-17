@@ -51,6 +51,11 @@ void    Request::setServerBlocks(std::vector<ServerBlock> &server_blocks)
     _server_blocks = server_blocks;
 }
 
+void    Request::setServerBlock(ServerBlock *server_block)
+{
+    _server = server_block;
+}
+
 void    Request::setSocket(Socket *socket)
 {
     _socket = socket;
@@ -84,6 +89,11 @@ ParsingState    Request::getParsingState() const
 ServerBlock*  Request::getServerBlock() const
 {
     return _server;
+}
+
+Socket* Request::getSocket() const
+{
+    return _socket;
 }
 
 const std::string   &Request::getMethodStr() const

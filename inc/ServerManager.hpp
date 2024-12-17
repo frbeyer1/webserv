@@ -20,6 +20,7 @@ private:
     void    _checkTimeout();
     void    _readRequest(Client &client);
     void    _sendResponse(Client &client);
+    void    _findDefaultServer(Client &client);
 
 public:
 // Constructor

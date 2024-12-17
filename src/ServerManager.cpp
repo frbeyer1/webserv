@@ -20,24 +20,7 @@ static void    addToEpollInstance(int epoll_fd, int add_fd)
     event.events = EPOLLIN; 
     event.data.fd = add_fd;
     if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, add_fd, &event) == -1)
-    {
         Logger::log(RED, ERROR, "adding fd[%i] to epoll instance failed", add_fd);
-        exit(EXIT_FAILURE);
-    }
-}
-/*
-adds the add_fd to the epoll instance
-*/
-static void    addServerToEpollInstance(int epoll_fd, int add_fd)
-{
-    struct epoll_event event;
-    event.events = EPOLLIN; 
-    event.data.fd = add_fd;
-    if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, add_fd, &event) == -1)
-    {
-        Logger::log(RED, ERROR, "adding fd[%i] to epoll instance failed", add_fd);
-        exit(EXIT_FAILURE);
-    }
 }
 
 // ======   Private member functions   ======= //
@@ -79,15 +62,9 @@ closes connection:
 void    ServerManager::_closeConnection(int fd)
 {
     if (epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, fd, NULL) == -1)
-    {
         Logger::log(RED, ERROR, "Deleting fd[%i] from epoll instance failed", fd);
-        exit(EXIT_FAILURE);
-    }
     if (close(fd))
-    {
         Logger::log(RED, ERROR, "Closing fd[%i] failed", fd);
-        exit(EXIT_FAILURE);
-    }
     _client_map.erase(fd);
     Logger::log(CYAN, INFO, "Closed connection on fd[%i]", fd);
 }
@@ -108,6 +85,23 @@ void    ServerManager::_checkTimeout()
     {
         Logger::log(CYAN, INFO, "Client timeout: Client_FD[%i], closing connection ...", timeouts[i]);
         _closeConnection(timeouts[i]);
+    }
+}
+
+/*
+finds default Server 
+*/
+void ServerManager::_findDefaultServer(Client &client)
+{
+    if (client.socket == NULL)
+        return ;
+    for (size_t i  = 0; i < _server_blocks.size(); i++)
+    {
+        if (_server_blocks[i]._host == client.socket->getHost() && _server_blocks[i]._port == client.socket->getPort())
+        {
+            client.request.setServerBlock(&_server_blocks[i]);
+            return ;
+        }
     }
 }
 
@@ -145,6 +139,13 @@ void    ServerManager::_readRequest(Client &client)
     if (client.request.getParsingState() == Parsing_Finished || client.request.getError() != OK)
     {
         Logger::log(GREEN, INFO, "Request received from client fd[%i] with method[%s] and URI[%s]", fd, client.request.getMethodStr().c_str(), client.request.getPath().c_str());
+        if (client.request.getServerBlock() == NULL)
+            _findDefaultServer(client);
+        if (client.request.getServerBlock() == NULL)
+        {
+            _closeConnection(fd);
+            return ;
+        }
         client.response.buildResponse(client.request);
         Logger::log(GREY, DEBUG, "Finished response building");
         struct epoll_event event;
@@ -154,7 +155,8 @@ void    ServerManager::_readRequest(Client &client)
         if (epoll_ctl(_epoll_fd, EPOLL_CTL_MOD, fd, &event))
         {
             Logger::log(RED, ERROR, "Changing settings associated with fd[%i] in epoll instance failed", fd);
-            exit(EXIT_FAILURE);
+            _closeConnection(fd);
+            return ;
         }
     }
 }
@@ -304,7 +306,7 @@ void    ServerManager::boot()
     // adds all server_fds to epoll instance and starts listening on the server sockets
     for (std::map<int, Socket>::iterator it = _socket_map.begin(); it != _socket_map.end(); it++)
     {
-        addServerToEpollInstance(_epoll_fd, it->second.getSocketFd());
+        addToEpollInstance(_epoll_fd, it->second.getSocketFd());
         it->second.startListening();
     }
     Logger::log(WHITE, INFO, "Booted Servers successfully");

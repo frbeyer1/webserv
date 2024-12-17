@@ -100,6 +100,7 @@ public:
     ParsingState                                getParsingState() const;
     HttpMethod                                  getMethod() const;
     ServerBlock*                                getServerBlock() const;
+    Socket*                                     getSocket() const;
     const std::string&                          getMethodStr() const;
     const std::string&                          getPath() const;
     const std::string&                          getQuery() const;
@@ -109,6 +110,7 @@ public:
 
 // Setters
     void                                        setServerBlocks(std::vector<ServerBlock> &server_blocks);
+    void                                        setServerBlock(ServerBlock *server_block);
     void                                        setSocket(Socket* socket);
 
 // Member functions
