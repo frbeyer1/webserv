@@ -16,6 +16,7 @@ class Response
         std::string _content;
         std::string _content_type;
         std::string _location;
+        int         _clientfd;
 
     // Private member functions 
         void        _setConnection(Request& request);
@@ -24,8 +25,8 @@ class Response
         void        _handleGet(Request &request, ServerBlock &server);
         void        _handlePost(Request &request, ServerBlock &server);
         void        _handleDelete(Request &request, ServerBlock &server);
-        CgiReturn*  _process_cgi(int cgifd, char *cgifile, char **env, int clientfd, Request &ref1, ServerBlock &ref2);
-        char**      _buildenv(char *cgifile, char **env,int clientfd, Request &ref1, ServerBlock &ref2);
+        int          _process_cgi(std::string cgipath, std::string cgi_file, int clientfd, Request &ref1, ServerBlock &ref2);
+        char**      _buildenv(const char *cgifile, int clientfd, Request &ref1, ServerBlock &ref2);
 
     public:
     // Constructor
@@ -40,7 +41,7 @@ class Response
         const std::string   &getConnection() const;
 
     // Member functions
-        void        buildResponse(Request &request);
+        void        buildResponse(Request &request, int clientfd);
         void        trimResponse(int i);
         void        clear();
     

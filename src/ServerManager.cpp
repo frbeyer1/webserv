@@ -146,7 +146,7 @@ void    ServerManager::_readRequest(Client &client)
             _closeConnection(fd);
             return ;
         }
-        client.response.buildResponse(client.request);
+        client.response.buildResponse(client.request, client._client_fd);
         Logger::log(GREY, DEBUG, "Finished response building");
         struct epoll_event event;
 

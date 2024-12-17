@@ -324,6 +324,10 @@ void Response::_handleGet(Request &request, ServerBlock &server)
             path.replace(pos, root.size() + location->first.size(), location->second._alias);
     }
     // cgi
+
+    // for (std::map<std::string, std::string>::const_iterator it = request.getHeaders().begin(); it != request.getHeaders().end(); ++it) {
+    //     std::cout << it->first << ": " << it->second << std::endl;
+    // }
     if(!location->second._cgi.empty())
     {
         if(location->second._allowed_methods._allow_post == false){
@@ -342,39 +346,25 @@ void Response::_handleGet(Request &request, ServerBlock &server)
         }
         if(cgi_path.empty()){
             _error = INTERNAL_SERVER_ERROR;
-                        std::cout<<"err1"<<std::endl;
-
             return;
         }
         std::ifstream file(cgi_script.c_str());
-        // if(!file.good()){
-        //     _error = INTERNAL_SERVER_ERROR;
-        //     std::cout<<"err2"<<std::endl;
-        //     return;
-        // }
-        int fd = _process_cgi(cgi_path, cgi_script.c_str(), _clientfd, request, server);
-        if(fd == -1){
+        if(!file.good()){
             _error = INTERNAL_SERVER_ERROR;
-                        std::cout<<"err3"<<std::endl;
-
             return;
         }
-        std::stringstream ss;
-        ss << fd;
-        std::string fdStr = ss.str();
-        std::ifstream cgifd(("/proc/self/fd/" + fdStr).c_str());
-        std::string line;
-        while (std::getline(cgifd, line)) {
-            _content += line;
-        }
-        cgifd.close();
-        return ;
-        /*
-            - FREE THE newenv after using it for your nefarious purposes
-            - close fdread when you are done with it
-            - check if fdread is -1, if so, system function has failed, Error Code 500
-        */
+        // std::stringstream ss;
+        // ss << process_cgi(cgi_script, cgi_path, );
+        // std::string fdStr = ss.str();
+        // std::ifstream file("/proc/self/fd/" + fdStr);
+        // std::string line;
+        // while (std::getline(file, line)) {
+        //     _content += line;
+        // }
+        // file.close();
+        // return ;
     }
+    // std::cout << request.getPath() <<std::endl;
     struct stat file_info;
     
     // file does not exist
@@ -692,42 +682,45 @@ void Response::trimResponse(int bytes_send)
 /*
 builds the Response for the request of the client
 */
-void Response::buildResponse(Request &request, int clientfd)
+void Response::buildResponse(Request &request)
 {
     ServerBlock *server = request.getServerBlock();
 
     if (server == NULL)
-        std::cout << "NULL du idiot" << std::endl;
-
+        return ;
     _error = request.getError();
-    _clientfd = clientfd;
-    switch (request.getMethod()) {
-
-    case GET:
-        _handleGet(request, *server);
-        break;
-    case POST:
-        _handlePost(request, *server);
-        break;
-    case DELETE:
-        _handleDelete(request, *server);
-        break;
-    default:
-        _error = NOT_IMPLEMENTED;
-        break;
+    if (_error == OK)
+    {
+        switch (request.getMethod()) {
+        case GET:
+            _handleGet(request, *server);
+            break;
+        case POST:
+            _handlePost(request, *server);
+            break;
+        case DELETE:
+            _handleDelete(request, *server);
+            break;
+        default:
+            _error = NOT_IMPLEMENTED;
+            break;
+        }
     }
     _buildResponseStr(request, *server);
 }
 
 /*
 to do:
-- build cgi connection 
-    - FREE THE newenv after using it for your nefarious purposes
-    - close fdread when you are done with it
-    - check if fdread is -1, if so, system function has failed, Error Code 500
-- success pages hardcoden
+- build cgi connection - get content type
+- content-length for cgi
+- allow_post
+- handle multiple file upload
 - [11/Dec/2024  21:03:42]  [ERROR]  Could not bind socket: Address already in use -> when CRTL D
 */
+
+
+
+
 
 //CGI NOTES 15.12
 // Es gibt kein ARGV fuer cgi scripts.
@@ -739,7 +732,20 @@ to do:
 // It contains the input values from HTML forms that use the GET method2.
 // The webserver extracts this information from the URL and sets it as the QUERY_STRING environment variable
 
+// path wird aus Request class/struct ausgelesen
+
 // CGI tests muessen jetzt folgen
+
+
+// Info fuer Freddy
+// FREE THE newenv after using it for your nefarious purposes
+// close fdread when you are done with it
+// check if fdread is -1, if so, system function has failed, Error Code 500
+
+// cgifile muss so aufgebaut werden:
+// <PATH>/python3
+// <CGIFILE>
+// <ARGUMENT 1 etc.>
 
 // Takes two lines and allocates them into one, skips line 2 if its \0
 static char *newlinecombine(const char *line1, const char *line2) {
@@ -789,19 +795,28 @@ static char* itoa(int num) {
 }
 
 
-char** Response::_buildenv(const char *cgifile, int clientfd, Request &ref1, ServerBlock &ref2)
+char** Response::_buildenv(char *cgifile, char **env,int clientfd, Request &ref1, ServerBlock &ref2)
 {
     int envlen = 0;
+    while (env[envlen])
+        envlen++;
     char **newenv = (char **)malloc((envlen + 20) * sizeof(char *));;
-    int j = 0;
 
+    int j = 0;
+    for (int i = 0; env[i] ;i++) {
+        newenv[i] =  newlinecombine(env[i], "\0");
+        j++;
+    }
+    //ref 1 = request ||| ref 2 = Server
     newenv[j++] = newlinecombine("REDIRECT_STATUS=\0", itoa(_error));
     newenv[j++] = newlinecombine("CONTENT_TYPE=\0", _content_type.c_str());
     newenv[j++] = newlinecombine("CONTENT_LENGTH=\0", itoa(_content.size()));
+
     newenv[j++] = newlinecombine("GATEWAY_INTERFACE=\0", "CGI/1.1\0");
     newenv[j++] = newlinecombine("PATH_INFO=\0", ref1.getPath().c_str()); 
     newenv[j++] = newlinecombine("PATH_TRANSLATED=\0", (ref2._root + ref1.getPath()).c_str()); // path to CGI script but out of root
     newenv[j++] = newlinecombine("QUERY_STRING=\0", ref1.getQuery().c_str());
+    // newenv[j++] = newlinecombine("REMOTE_ADDR=\0", sockaddrToIpString(ref1.getClientAddress()).c_str()); //client shit
     newenv[j++] = newlinecombine("REMOTE_HOST=\0", ""); // not defined in Client, empty because unlikely
     newenv[j++] = newlinecombine("REMOTE_USER=\0", itoa(clientfd));
     newenv[j++] = newlinecombine("REQUEST_METHOD=\0", itoa(ref1.getMethod()));
@@ -817,47 +832,31 @@ char** Response::_buildenv(const char *cgifile, int clientfd, Request &ref1, Ser
     return newenv;
 }
 
-void envfree(char **env) {
-    for (int i = 0; env[i]; i++) {
-        free(env[i]);
-    }
-    free(env);
-}
-
 //we return an int, which is a file descriptor where everything has been dumped into.
-int Response::_process_cgi(std::string cgipath, std::string cgi_file, int clientfd, Request &ref1, ServerBlock &ref2) 
+CgiReturn* Response::_process_cgi(int cgifd, char *cgifile, char **env, int clientfd, Request &ref1, ServerBlock &ref2) 
 {
-    const char *path = cgipath.c_str();
-    const char *cgifile = cgi_file.c_str();
-    char **env = _buildenv(cgifile, clientfd, ref1, ref2);
+    CgiReturn *data;
+    data = (CgiReturn*)malloc(2 * sizeof(CgiReturn));
+    _buildenv(cgifile, env, clientfd, ref1, ref2);
     char *argv[3];
-    argv[0] = const_cast<char*>(path);
-    argv[1] = const_cast<char*>(cgifile);
+    argv[0] = const_cast<char*>(ref1.getPath().c_str());
+    argv[1] = cgifile;
     argv[2] = NULL;
-    int cgifd[2];
-    if (!ref1.getBody().empty()) {
-        if (pipe(cgifd) == -1) {
-            Logger::log(RED, ERROR, "Creating cgi pipe has failed, aborting CGI init process.");
-            envfree(env);
-            return -1;
-        }
-        write(cgifd[1], ref1.getBody().c_str(), ref1.getBody().length());
-        close(cgifd[1]);
-    }
-    else {
-        cgifd[0] = 0;
-        cgifd[1] = 1;
-    }
+    // ein ARGV ist nicht notwendig, CGI zieht entweder aus dem READ end oder aus der env
+    // for (int i = 0; i < ref3._cgi.size(); i++) {
+    //     argv[2+i] = ref3._cgi[i];
+    //     argv[3+i] = NULL;
+    // } ^ Alter Code
     int fd[2], pid, status;
     if (pipe(fd) == -1) {
         Logger::log(RED, ERROR, "Creating pipe has failed, aborting CGI init process.");
-        envfree(env);
-        return -1;
+        data->fdread = -1;
+        return data;
     }
     if ((pid = fork()) == -1) {
         Logger::log(RED, ERROR, "Creating fork has failed, aborting CGI init process.");
-        envfree(env);
-        return -1;
+        data->fdread = -1;
+        return data;
     }
     if (!pid) {
         if (dup2(fd[1], 1) == -1) {
@@ -865,7 +864,7 @@ int Response::_process_cgi(std::string cgipath, std::string cgi_file, int client
             abort();
         }
         
-        if (cgifd[0] != 0 && dup2(cgifd[0], 0) == -1) { //if cgifd is not unset, set it now
+        if (cgifd != 0 && dup2(cgifd, 0) == -1) { //if we have a read FD, pass it to the CGI script
             Logger::log(RED, ERROR, "Child Process ID: %i: dup2 has failed (READ)", pid);
             abort();
         }
@@ -875,12 +874,12 @@ int Response::_process_cgi(std::string cgipath, std::string cgi_file, int client
     }
     waitpid(pid, &status, 0);
     if (!WIFEXITED(status)) {
-        envfree(env);
-        return -1;
+       data->fdread = -1;
+       return data;
     }
     close(fd[1]); //WRITE END
-    close(cgifd[0]);
     //close(fd[0]); //READ END
-    envfree(env);
-    return fd[0];
+    data->fdread = fd[0];
+    return data;
 }
+
