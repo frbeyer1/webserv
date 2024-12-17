@@ -24,7 +24,7 @@ class Response
         void        _handleGet(Request &request, ServerBlock &server);
         void        _handlePost(Request &request, ServerBlock &server);
         void        _handleDelete(Request &request, ServerBlock &server);
-        CgiReturn*  _process_cgi(char **cgifile, char **env, int clientfd, Request &ref1, ServerBlock &ref2);
+        CgiReturn*  _process_cgi(int cgifd, char *cgifile, char **env, int clientfd, Request &ref1, ServerBlock &ref2);
         char**      _buildenv(char *cgifile, char **env,int clientfd, Request &ref1, ServerBlock &ref2);
 
     public:
