@@ -323,6 +323,7 @@ void Response::_handleGet(Request &request, ServerBlock &server)
         if (pos != std::string::npos)
             path.replace(pos, root.size() + location->first.size(), location->second._alias);
     }
+
     // cgi
     if(!location->second._cgi.empty())
     {
@@ -330,7 +331,7 @@ void Response::_handleGet(Request &request, ServerBlock &server)
             _error = NOT_ALLOWED;
             return;
         }
-        std::string cgi_script = request.getPath().substr(request.getPath().find(location->first) + location->first.size());
+        std::string cgi_script = path;
         std::string cgi_path;
         //check if script extention is valid and if so sets path
         for (std::map<std::string, std::string>::const_iterator it = location->second._cgi.begin(); it != location->second._cgi.end(); ++it) {
@@ -342,21 +343,16 @@ void Response::_handleGet(Request &request, ServerBlock &server)
         }
         if(cgi_path.empty()){
             _error = INTERNAL_SERVER_ERROR;
-                        std::cout<<"err1"<<std::endl;
-
             return;
         }
         std::ifstream file(cgi_script.c_str());
-        // if(!file.good()){
-        //     _error = INTERNAL_SERVER_ERROR;
-        //     std::cout<<"err2"<<std::endl;
-        //     return;
-        // }
+        if(!file.good()){
+            _error = INTERNAL_SERVER_ERROR;
+            return;
+        }
         int fd = _process_cgi(cgi_path, cgi_script.c_str(), _clientfd, request, server);
         if(fd == -1){
             _error = INTERNAL_SERVER_ERROR;
-                        std::cout<<"err3"<<std::endl;
-
             return;
         }
         std::stringstream ss;
@@ -370,11 +366,10 @@ void Response::_handleGet(Request &request, ServerBlock &server)
         cgifd.close();
         return ;
         /*
-            - FREE THE newenv after using it for your nefarious purposes
-            - close fdread when you are done with it
-            - check if fdread is -1, if so, system function has failed, Error Code 500
+        - close fdread when you are done with it
         */
     }
+
     struct stat file_info;
     
     // file does not exist
@@ -465,6 +460,53 @@ void Response::_handlePost(Request &request, ServerBlock &server)
     root.erase(root.size() - 1);
 
     full_path = root + path;
+
+    // cgi
+    if(!location->second._cgi.empty())
+    {
+        if(location->second._allowed_methods._allow_post == false){
+            _error = NOT_ALLOWED;
+            return;
+        }
+        std::string cgi_script = full_path;
+        std::string cgi_path;
+        //check if script extention is valid and if so sets path
+        for (std::map<std::string, std::string>::const_iterator it = location->second._cgi.begin(); it != location->second._cgi.end(); ++it) {
+            if(cgi_script.find(it->first, cgi_script.length() - it->first.size()) != std::string::npos)
+            {
+                cgi_path = it->second.substr();
+                break;
+            }
+        }
+        if(cgi_path.empty()){
+            _error = INTERNAL_SERVER_ERROR;
+            return;
+        }
+        std::ifstream file(cgi_script.c_str());
+        if(!file.good()){
+            _error = INTERNAL_SERVER_ERROR;
+            return;
+        }
+        int fd = _process_cgi(cgi_path, cgi_script.c_str(), _clientfd, request, server);
+        if(fd == -1){
+            _error = INTERNAL_SERVER_ERROR;
+            return;
+        }
+        std::stringstream ss;
+        ss << fd;
+        std::string fdStr = ss.str();
+        std::ifstream cgifd(("/proc/self/fd/" + fdStr).c_str());
+        std::string line;
+        while (std::getline(cgifd, line)) {
+            _content += line;
+        }
+        cgifd.close();
+        return ;
+        /*
+        - close fdread when you are done with it
+        */
+    }
+
     struct stat file_info;
 
     if (stat(full_path.c_str(), &file_info) == 0 && S_ISDIR(file_info.st_mode)) // upload a file
@@ -721,10 +763,7 @@ void Response::buildResponse(Request &request, int clientfd)
 
 /*
 to do:
-- build cgi connection 
-    - FREE THE newenv after using it for your nefarious purposes
-    - close fdread when you are done with it
-    - check if fdread is -1, if so, system function has failed, Error Code 500
+- gucken was ist, wenn cgi location nicht existiert
 - success pages hardcoden
 - [11/Dec/2024  21:03:42]  [ERROR]  Could not bind socket: Address already in use -> when CRTL D
 */
