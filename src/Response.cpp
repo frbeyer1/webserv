@@ -686,24 +686,25 @@ void Response::buildResponse(Request &request)
 {
     ServerBlock *server = request.getServerBlock();
 
-    _error = request.getError();
-    if (server != NULL && _error == OK)
-    {
-        switch (request.getMethod()) {
+    if (server == NULL)
+        std::cout << "NULL du idiot" << std::endl;
 
-        case GET:
-            _handleGet(request, *server);
-            break;
-        case POST:
-            _handlePost(request, *server);
-            break;
-        case DELETE:
-            _handleDelete(request, *server);
-            break;
-        default:
-            _error = NOT_IMPLEMENTED;
-            break;
-        }
+    _error = request.getError();
+
+    switch (request.getMethod()) {
+
+    case GET:
+        _handleGet(request, *server);
+        break;
+    case POST:
+        _handlePost(request, *server);
+        break;
+    case DELETE:
+        _handleDelete(request, *server);
+        break;
+    default:
+        _error = NOT_IMPLEMENTED;
+        break;
     }
     _buildResponseStr(request, *server);
 }
@@ -721,7 +722,19 @@ to do:
 
 
 
+//CGI NOTES 15.12
+// Es gibt kein ARGV fuer cgi scripts.
+// Argumente werden entweder aus env QUERY oder aus dem READ fd gezogen
+// Es ist zu pruefen ob env QUERY richtig ausgefuellt wird. CGI argumente stehen wohl teilweise in der URL..
+// Quote:
+//The QUERY_STRING environment variable is communicated to the webserver as part of the URL in a GET request12. Specifically:
+// It appears after the '?' character in the URL25.
+// It contains the input values from HTML forms that use the GET method2.
+// The webserver extracts this information from the URL and sets it as the QUERY_STRING environment variable
 
+// path wird aus Request class/struct ausgelesen
+
+// CGI tests muessen jetzt folgen
 
 
 // Info fuer Freddy
@@ -752,6 +765,7 @@ static char *newlinecombine(const char *line1, const char *line2) {
     return newline;
 }
 
+
 static char* itoa(int num) {
     char *str;
     int i = 10;
@@ -780,10 +794,13 @@ static char* itoa(int num) {
     return &str[i+1];
 }
 
-// /HttpRequest &ref1, Server &ref2, Response &ref3
+
 char** Response::_buildenv(char *cgifile, char **env,int clientfd, Request &ref1, ServerBlock &ref2)
-{ 
-    char **newenv = (char **)malloc(400 * sizeof(char *));;
+{
+    int envlen = 0;
+    while (env[envlen])
+        envlen++;
+    char **newenv = (char **)malloc((envlen + 20) * sizeof(char *));;
 
     int j = 0;
     for (int i = 0; env[i] ;i++) {
@@ -792,8 +809,8 @@ char** Response::_buildenv(char *cgifile, char **env,int clientfd, Request &ref1
     }
     //ref 1 = request ||| ref 2 = Server
     newenv[j++] = newlinecombine("REDIRECT_STATUS=\0", itoa(_error));
-    newenv[j++] = newlinecombine("CONTENT_TYPE=\0", _content_type.c_str()); //getContent_type existiert nicht
-    newenv[j++] = newlinecombine("CONTENT_LENGTH=\0", itoa(_content.size())); // content length not defined in Response
+    newenv[j++] = newlinecombine("CONTENT_TYPE=\0", _content_type.c_str());
+    newenv[j++] = newlinecombine("CONTENT_LENGTH=\0", itoa(_content.size()));
 
     newenv[j++] = newlinecombine("GATEWAY_INTERFACE=\0", "CGI/1.1\0");
     newenv[j++] = newlinecombine("PATH_INFO=\0", ref1.getPath().c_str()); 
@@ -816,11 +833,20 @@ char** Response::_buildenv(char *cgifile, char **env,int clientfd, Request &ref1
 }
 
 //we return an int, which is a file descriptor where everything has been dumped into.
-CgiReturn* Response::_process_cgi(char **cgifile, char **env, int clientfd, Request &ref1, ServerBlock &ref2) 
+CgiReturn* Response::_process_cgi(int cgifd, char *cgifile, char **env, int clientfd, Request &ref1, ServerBlock &ref2) 
 {
     CgiReturn *data;
     data = (CgiReturn*)malloc(2 * sizeof(CgiReturn));
-    _buildenv(cgifile[1], env, clientfd, ref1, ref2);
+    _buildenv(cgifile, env, clientfd, ref1, ref2);
+    char *argv[3];
+    argv[0] = const_cast<char*>(ref1.getPath().c_str());
+    argv[1] = cgifile;
+    argv[2] = NULL;
+    // ein ARGV ist nicht notwendig, CGI zieht entweder aus dem READ end oder aus der env
+    // for (int i = 0; i < ref3._cgi.size(); i++) {
+    //     argv[2+i] = ref3._cgi[i];
+    //     argv[3+i] = NULL;
+    // } ^ Alter Code
     int fd[2], pid, status;
     if (pipe(fd) == -1) {
         Logger::log(RED, ERROR, "Creating pipe has failed, aborting CGI init process.");
@@ -834,14 +860,15 @@ CgiReturn* Response::_process_cgi(char **cgifile, char **env, int clientfd, Requ
     }
     if (!pid) {
         if (dup2(fd[1], 1) == -1) {
-            Logger::log(RED, ERROR, "Child Process ID: %i: dup2 has failed (IN)", pid);
+            Logger::log(RED, ERROR, "Child Process ID: %i: dup2 has failed (WRITE)", pid);
             abort();
         }
-        if (dup2(fd[0], 0) == -1) {
-            Logger::log(RED, ERROR, "Child Process ID: %i: dup2 has failed (OUT)", pid);
+        
+        if (cgifd != 0 && dup2(cgifd, 0) == -1) { //if we have a read FD, pass it to the CGI script
+            Logger::log(RED, ERROR, "Child Process ID: %i: dup2 has failed (READ)", pid);
             abort();
         }
-        execve(*cgifile, cgifile, env);
+        execve(*argv, argv, env);
         abort();
         Logger::log(RED, ERROR, "Child Process ID: %i: Execve has failed. Program name: %s", pid, *cgifile);
     }
@@ -855,3 +882,4 @@ CgiReturn* Response::_process_cgi(char **cgifile, char **env, int clientfd, Requ
     data->fdread = fd[0];
     return data;
 }
+
