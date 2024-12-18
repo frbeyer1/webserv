@@ -918,7 +918,8 @@ int Response::_process_cgi(std::string cgipath, std::string cgi_file, int client
         return -1;
     }
     close(fd[1]); //WRITE END
-    close(cgifd[0]);
+    if (!ref1.getBody().empty())
+        close(cgifd[0]);
     //close(fd[0]); //READ END
     envfree(env);
     return fd[0];

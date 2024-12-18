@@ -89,7 +89,7 @@ void    ServerManager::_checkTimeout()
 }
 
 /*
-finds default Server 
+finds the default Server 
 */
 void ServerManager::_findDefaultServer(Client &client)
 {

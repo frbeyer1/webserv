@@ -119,7 +119,7 @@ int    Socket::acceptConnection()
     int new_socket;
     int addrlen = sizeof(_socket_address);
 
-    if ((new_socket = accept(_socket_fd, (struct sockaddr *)&_socket_address, (socklen_t*)&addrlen))<0)
+    if ((new_socket = accept(_socket_fd, (struct sockaddr *)&_socket_address, (socklen_t*)&addrlen)) < 0)
     {
         Logger::log(RED, ERROR, "Socket could not accept connection: %s", strerror(errno));
         exit(EXIT_FAILURE);        

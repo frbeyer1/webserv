@@ -32,4 +32,6 @@ int main(int argc, char ** argv)
 // -    if exit (need to close all open fds?)
 // -    check leaks
 
+// check all exit() and delete if in the main server loop
+
 // response: readStatus: still hardcoded => do nothing after post or send succsess Page ?
