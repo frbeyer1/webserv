@@ -48,7 +48,8 @@ http://localhost:8080
 
 ### Configuration
 
-The Configuration file is a text file that contains various settings named directives that dictate how the web server should operate. If any directive is not set, it will take the default settings defined in Webserv.hpp.
+The Configuration file is a text file that contains various settings named directives that dictate how the web server should operate.
+If any directive is not set, it will take the default settings defined in Webserv.hpp.
 You can put multiple server blocks inside one config with different settings.
 
 #### Example:
@@ -56,15 +57,14 @@ You can put multiple server blocks inside one config with different settings.
 ```
 server {
 
-    server_name                     example.com www.example.com;                # sets names of the virtual server
-    listen                          127.0.0.1:8080;                             # binds the given address to the port. if no address is given, binds 0.0.0.0.
-    root                            docs/;                                      # sets the root directory for the server
-    client_max_body_size            100000;                                     # limits the allowed client body size in
-    error_page                      404 error_pages/404.html;                   # defines the URI that will be shown for the specified errors.
-
-    location / {                                                                # sets configuration depending on the given uri
-        allowed_methods     GET;                                                # defines allowed methods on that location
-        index               index.html;                                         # defines file that will be used as an index for that location
+    server_name                     example.com www.example.com;    # sets names of the virtual server
+    listen                          127.0.0.1:8080;                 # binds the given address to the port. if no address is given, binds 0.0.0.0.
+    root                            docs/;                          # sets the root directory for the server
+    client_max_body_size            100000;                         # limits the allowed client body size in
+    error_page                      404 error_pages/404.html;       # defines the URI that will be shown for the specif
+    location / {                                                    # sets configuration depending on the given uri
+        allowed_methods     GET;                                    # defines allowed methods on that location
+        index               index.html;                             # defines file that will be used as an index for that location
     }
 }
 ```
@@ -72,11 +72,11 @@ server {
 There are a couple more directives you can use inside an location:
 
 ```
-autoindex           on;                                                 # enables the directory listing
-alias               assets/images/;                                     # sets an alias
-return              https://www.google.com/;                            # sets an redirection
-upload              user/uploads/;                                      # defines a directory where files get uploaded
-cgi                 .py /bin/python3;                                   # defines a CGI binary that will be executed for the given extension
+autoindex           on;                                             # enables the directory listing
+alias               assets/images/;                                 # sets an alias
+return              https://www.google.com/;                        # sets an redirection
+upload              user/uploads/;                                  # defines a directory where files get uploaded
+cgi                 .py /bin/python3;                               # defines a CGI binary that will be executed for the given extension
 ```
 
 ### Deep dive
