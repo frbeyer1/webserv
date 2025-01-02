@@ -279,6 +279,7 @@ void Response::_setErrorPage(ServerBlock &server)
 
 /*
 handles an GET Request and sets all needed headers
+curl -X GET -H "Content-Type: application/x-www-form-urlencoded" -d "key=value" localhost:8080/cgi-bin/user.py
 */
 void Response::_handleGet(Request &request, ServerBlock &server)
 {
@@ -360,14 +361,17 @@ void Response::_handleGet(Request &request, ServerBlock &server)
         std::string fdStr = ss.str();
         std::ifstream cgifd(("/proc/self/fd/" + fdStr).c_str());
         std::string line;
+        int flag = 0;
         while (std::getline(cgifd, line)) {
+            if ((line.find("Content-Type") != std::string::npos) && flag == 0){
+                _content_type = line.substr(line.find(":") + 1);
+                flag = 1;
+                continue;
+            }
             _content += line;
         }
         cgifd.close();
         return ;
-        /*
-        - close fdread when you are done with it
-        */
     }
 
     struct stat file_info;
@@ -497,14 +501,17 @@ void Response::_handlePost(Request &request, ServerBlock &server)
         std::string fdStr = ss.str();
         std::ifstream cgifd(("/proc/self/fd/" + fdStr).c_str());
         std::string line;
+        int flag;
         while (std::getline(cgifd, line)) {
+            if ((line.find("Content-Type") != std::string::npos) && flag == 0){
+                _content_type = line.substr(line.find(":") + 1);
+                flag = 1;
+                continue;
+            }
             _content += line;
         }
         cgifd.close();
         return ;
-        /*
-        - close fdread when you are done with it
-        */
     }
 
     struct stat file_info;
