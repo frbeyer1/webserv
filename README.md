@@ -19,7 +19,7 @@ This was a group project consisting of [@frbeyer](https://github.com/frbeyer1), 
 - **Network:** handles multiple incoming connections, stress tested with [siege](https://github.com/JoeDog/siege)
 - **I/O Multiplexing:** uses epoll() to ensure the server to be single threaded and non blocking
 
-### Insallation
+### Installation
 
 1. Clone the repository
 ```
