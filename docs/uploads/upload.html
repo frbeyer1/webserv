@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/assets/css/styles.css">
+    <title>File Upload</title>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <a href="/assets/videos/intro.mp4">
+                <img src="/images/logo.png" alt="Logo" />
+            </a>
+        </div>
+        <nav>
+            <a href="/">Home</a>
+            <a href="/uploads/">Uploads</a>
+        </nav>
+    </header>
+    <div class="container">
+        <form action="/uploads" method="POST" enctype="multipart/form-data">
+        <h2>Upload a File</h2>
+        <input type="file" id="fileUpload" name="fileUpload" required><br>
+        <input type="submit" value="Upload">
+        </form>
+    </div>
+    <img src="/images/hank.png" alt="hank">
+</body>
+</html>

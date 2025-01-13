@@ -225,17 +225,17 @@ static std::map<std::string, Location>::const_iterator   findLocation(std::strin
 /*
 gets success message
 */
-static std::string    readStatus(int _error){
+static std::string    createSuccessPage(int _error){
     switch (_error)
     {
     case OK:
-        return("docs/saving_success.html");
+        return("<!DOCTYPE html><html><head><title>Saving successfull</title></head><center><h1></h1><html><body><h1>Saving successfull</h1><p>Data updated.</p></body></html></h1></center><hr><center>webserv</center></body></html>");
     case CREATED:
-        return("docs/new_user_success.html");
+        return("<!DOCTYPE html><html><head><title>Registration successfull</title></head><center><h1></h1><html><body><h1>Registration successfull</h1><p>You are now gay.</p></body></html></h1></center><hr><center>webserv</center></body></html>");
     case ACCEPTED:
-        return("docs/upload_success.html");
+        return("<!DOCTYPE html><html><head><title>Upload successfull</title></head><center><h1></h1><html><body><h1>Upload successfull</h1><p>File saved.</p></body></html></h1></center><hr><center>webserv</center></body></html>");
     default:
-        return "";
+        return ("<!DOCTYPE html><html><head><title>Default</title></head><center><h1></h1></h1></center><hr><center>webserv</center></body></html>");
     }
 }
 
@@ -363,13 +363,35 @@ void Response::_handleGet(Request &request, ServerBlock &server)
         std::string line;
         int flag = 0;
         while (std::getline(cgifd, line)) {
-            if ((line.find("Content-Type") != std::string::npos) && flag == 0){
-                _content_type = line.substr(line.find(":") + 1);
+            if(line.find("\r\n") != std::string::npos){
                 flag = 1;
-                continue;
+                std::cout << flag << std::endl;
             }
-            _content += line;
+            if ((line.find("Content-type") != std::string::npos && flag == 0))
+                std::cout << line.substr(line.find(":") + 1) << std::endl;
+            if ((line.find("Content-Length") != std::string::npos && flag == 0))
+                std::cout << line.substr(line.find(":") + 1) << std::endl;
+            if ((line.find("Content-encoding") != std::string::npos && flag == 0))
+                std::cout << line.substr(line.find(":") + 1) << std::endl;
+            if ((line.find("Location") != std::string::npos && flag == 0))
+                std::cout << line.substr(line.find(":") + 1) << std::endl;
+            if ((line.find("Status") != std::string::npos && flag == 0))
+                std::cout << line.substr(line.find(":") + 1) << std::endl;
+            if ((line.find("Set-Cookie") != std::string::npos && flag == 0))
+                std::cout << line.substr(line.find(":") + 1) << std::endl;
+            if ((line.find("Pragma") != std::string::npos && flag == 0))
+                std::cout << line.substr(line.find(":") + 1) << std::endl;
+            if ((line.find("Expires") != std::string::npos && flag == 0))
+                std::cout << line.substr(line.find(":") + 1) << std::endl;
+            if ((line.find("Cache-Control") != std::string::npos && flag == 0))
+                std::cout << line.substr(line.find(":") + 1) << std::endl;
+            if ((line.find("Content-Disposition") != std::string::npos && flag == 0))
+                std::cout << line.substr(line.find(":") + 1) << std::endl;
+            if (flag == 1)
+                _content += line;
+            std::cout << line << std::endl;
         }
+        std::cout << _content << std::endl;
         cgifd.close();
         return ;
     }
@@ -501,15 +523,6 @@ void Response::_handlePost(Request &request, ServerBlock &server)
         std::string fdStr = ss.str();
         std::ifstream cgifd(("/proc/self/fd/" + fdStr).c_str());
         std::string line;
-        int flag;
-        while (std::getline(cgifd, line)) {
-            if ((line.find("Content-Type") != std::string::npos) && flag == 0){
-                _content_type = line.substr(line.find(":") + 1);
-                flag = 1;
-                continue;
-            }
-            _content += line;
-        }
         cgifd.close();
         return ;
     }
@@ -600,12 +613,8 @@ void Response::_handlePost(Request &request, ServerBlock &server)
                 return ;}
         }
     }
-    std::string message_path = readStatus(_error);
-    if(message_path.empty()){
-        _error = INTERNAL_SERVER_ERROR;
-        return ;}
-    _content = readFile(message_path);
-    _content_type = getMimeType(message_path);
+    _content = createSuccessPage(_error);
+    _content_type = "text/html";
     return ;
 }
 
