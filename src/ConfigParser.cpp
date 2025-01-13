@@ -36,7 +36,7 @@ uint32_t ipStringToNumeric(const std::string& ip)
     }
     if (segmentCount != 4)
         throw std::invalid_argument("IP address has too less octets.");
-    return (numericIp);
+    return numericIp;
 }
 
 /*
@@ -454,12 +454,27 @@ static void handleCgi(std::string parameter, Location &location)
 /*
 Tries to open the config file, reads it and saves its content inside the _content string.
 - the config string must be an path to the file
+- config file must end with .conf
 */
 void    ConfigParser::_readConfig(std::string config)
 {
     std::ifstream           file(config.c_str());
     std::stringstream       buffer;
+    std::string             extension = ".conf";
 
+    // checks file extension
+    if (config.size() < extension.size())
+    {
+        Logger::log(RED, ERROR, "Config must have '.conf' file extension: %s", config.c_str());
+        exit(EXIT_FAILURE);
+    }
+    if (config.compare(config.size() - extension.size(), extension.size(), extension))
+    {
+        Logger::log(RED, ERROR, "Config must have '.conf' file extension: %s", config.c_str());
+        exit(EXIT_FAILURE);
+    }
+
+    // reads file
     if (file.fail())
     {
         Logger::log(RED, ERROR, "Unable to open file: %s", config.c_str());
@@ -515,7 +530,7 @@ void    ConfigParser::_findNextServerBlock()
             if (_content[_i] == '{')
             {
                 _i++;
-                return;
+                return ;
             }
             else
             {
@@ -566,7 +581,7 @@ std::string ConfigParser::_getParameter()
         exit(EXIT_FAILURE);
     }
     parameter = _content.substr(start, _i - start - 1);
-    return (parameter);
+    return parameter;
 }
 
 /*
@@ -597,12 +612,12 @@ Directive ConfigParser::_getDirectiveType()
         {
             _i += keyword.length();
             if (_content[_i] == ' ')
-                return (type);
+                return type;
             else
                 break ;
         }
     }
-    return (UNKNOWN);
+    return UNKNOWN;
 }
 
 /*
@@ -619,7 +634,7 @@ std::string    ConfigParser::_getLocationPath()
         else
             path.push_back(_content[_i]);
     }
-    return (path);
+    return path;
 }
 
 /*

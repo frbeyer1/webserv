@@ -5,10 +5,10 @@
 class Socket
 {
 private:
-    in_addr_t                           _host;
-    uint16_t                            _port;
-    int                                 _socket_fd;
-    struct sockaddr_in                  _socket_address;
+    int                         _fd;
+    uint16_t                    _port;
+    in_addr_t                   _host;
+    struct sockaddr_in          _addr;
 
 public:
 // Constructor
@@ -28,8 +28,8 @@ public:
     void                setHost(in_addr_t host);
 
 // Member functions
-    void                setup();
-    void                startListening();
+    int                 setup();
+    int                 startListening();
     int                 acceptConnection(); 
 
 };

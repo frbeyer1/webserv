@@ -6,7 +6,6 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <dirent.h>
-
 #include <sys/socket.h>
 #include <sys/epoll.h>
 #include <sys/stat.h>
@@ -21,7 +20,6 @@
 #include <ctime>
 #include <cstring>
 #include <cstdarg>
-
 #include <map>
 #include <vector>
 
@@ -31,33 +29,38 @@
 #include "Logger.hpp"
 #include "Socket.hpp"
 
-
-/*   Logger Settings   */
-#define DEFAULT_LOGGER_STATE                        ON              // ON or OFF
-#define DEFAULT_LOGGER_OUTPUT                       STDOUT          // STDOUT or OUT_FILE  
-#define DEFAULT_LOGGER_LEVEL                        INFO            // ERROR, INFO or DEBUG
+/* ========== Logger Settings ========== */
 #define LOGFILE_NAME                                "webserv.log"
+// ON or OFF
+#define DEFAULT_LOGGER_STATE                        ON
+// STDOUT or OUT_FILE
+#define DEFAULT_LOGGER_OUTPUT                       STDOUT
+// ERROR, INFO or DEBUG
+#define DEFAULT_LOGGER_LEVEL                        INFO
 
-/*   Default Config Settings   */
+
+/* ====== Default Config Settings ====== */
 #define DEFAULT_CONFIG                              "conf/default.conf"
 #define DEFAULT_INDEX                               "index.html"
 #define DEFAULT_PORT                                80
-#define DEFAULT_HOST                                "127.0.0.1"
+#define DEFAULT_HOST                                "0.0.0.0"
 #define DEFAULT_NAME                                "default"
 #define DEFAULT_ROOT                                "docs/"
 #define DEFAULT_CLIENT_MAX_BODY_SIZE                10240
 
-/*   Technical Settings   */
+
+/* ======== Technical Settings ========= */
+#define BACKLOG                                     5
 #define MAX_EPOLL_EVENTS                            10
 #define MAX_CONNECTIONS                             10
-#define BACKLOG                                     128
 #define MAX_URI_LENGTH                              4096
 #define MAX_HEADER_LENGTH                           8192
 #define CLIENT_CONNECTION_TIMEOUT                   60
 #define REQUEST_READ_SIZE                           4096
 #define RESPONSE_WRITE_SIZE                         4096
 
-/*   HTTP Error Codes   */
+
+/* ========= HTTP Error Codes ========== */
 #define OK                                          200
 #define CREATED                                     201
 #define ACCEPTED                                    202
@@ -75,7 +78,8 @@
 #define INTERNAL_SERVER_ERROR                       500
 #define NOT_IMPLEMENTED                             501
 
-/*   ANSI escape codes for colors   */
+
+/* === ANSI escape codes for colors ==== */
 #define RESET                                       "\033[0m"
 #define RED                                         "\033[31m"
 #define YELLOW                                      "\033[33m"

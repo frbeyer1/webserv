@@ -249,7 +249,7 @@ static void    trimFieldValueStr(std::string &string)
 
 // ======   Private Member functions   ======= //
 /*
-finding the correct server for the request
+finding the correct server block for the request
 */
 void    Request::_findServerBlock(std::string host)
 {

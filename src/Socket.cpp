@@ -3,6 +3,9 @@
 // =============   Constructor   ============= //
 Socket::Socket()
 {
+    _fd = 0;
+    _port = 0;
+    _host = 0;
 }
 
 // ============   Deconstructor   ============ //
@@ -13,22 +16,22 @@ Socket::~Socket()
 // ==============   Getters   ================ //
 in_addr_t Socket::getHost() const
 {
-    return (_host);
+    return _host;
 }
 
 uint16_t Socket::getPort() const
 {
-    return (_port);
+    return _port;
 }
 
 int Socket::getSocketFd() const
 {
-    return (_socket_fd);
+    return _fd;
 }
 
 struct sockaddr_in Socket::getSocketAddress() const
 {
-    return (_socket_address);
+    return _addr;
 }
 
 // ==============   Setters   ================ //
@@ -42,88 +45,91 @@ void    Socket::setHost(in_addr_t host)
     _host = host;
 }
 
+
 // ================   Utils   ================ //
 /*
-function to set an fd into non-blocking mode
+setting an fd into non-blocking mode
+    - on success, zero is returned
+    - on error, -1 is returned, and errno is set to indicate the error.
 */
-static void    setNonBlocking(int fd)
+static int    setNonBlocking(int fd)
 {
-    // Get the current flags for the file descriptor
+    // gets the current flags for the file descriptor
     int flags = fcntl(fd, F_GETFL, 0);
     if (flags == -1)
-    {
-        Logger::log(RED, ERROR, "Could not get flags from file descriptor: %s", strerror(errno));
-        exit(EXIT_FAILURE);
-    }
-    // Set the flags to include O_NONBLOCK
+        return -1;
+
+    // sets the flags to include O_NONBLOCK
     flags |= O_NONBLOCK;
-    // Set the new flags for the file descriptor
+
+    // sets the new flags to the file descriptor
     if (fcntl(fd, F_SETFL, flags) == -1)
-    {
-        Logger::log(RED, ERROR, "Could not set flags to file descriptor: %s", strerror(errno));
-        exit(EXIT_FAILURE);
-    }
+        return -1;
+    return 0;
 }
 
 // ==========   Member functions   =========== //
 /*
-function to create and setup an tcp socket
+setting up an non blocking TCP socket for listening for new connections:
+    - creating the socket
+    - setting the socket to reuse ports
+    - binding an address to the socket
+    - setting the socket in non blocking mode
+    - on success, zero is returned
+    - on error, -1 is returned, and errno is set to indicate the error.
 */
-void    Socket::setup()
+int    Socket::setup()
 {
-    // 1. create the socket
-    _socket_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (_socket_fd < 0)
-    {
-        Logger::log(RED, ERROR, "Could not set up socket: %s", strerror(errno));
-        exit(EXIT_FAILURE);
-    }
-    // 2. sets the socket to reuse ports
+    // creating the socket
+    _fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (_fd < 0)
+        return -1;
+
+    // setting the socket to reuse ports
     const int opt = 1;
-    if (setsockopt(_socket_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
-    {
-        Logger::log(RED, ERROR, "Setsockopt (SO_REUSEADDR) failed: %s", strerror(errno));
-        exit(EXIT_FAILURE);
-    }
-    // 3. setup and bind the address to the socket
-    _socket_address.sin_family = AF_INET;
-    _socket_address.sin_port = htons(_port);
-    _socket_address.sin_addr.s_addr = htonl(_host);
-    std::memset(_socket_address.sin_zero, '\0', sizeof(_socket_address.sin_zero));
-    if (bind(_socket_fd, (struct sockaddr *)&_socket_address, sizeof(_socket_address)) < 0)
-    {
-        Logger::log(RED, ERROR, "Could not bind socket: %s", strerror(errno));
-        exit(EXIT_FAILURE);
-    }
-    setNonBlocking(_socket_fd);
+    if (setsockopt(_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
+        return -1;
+
+    // binding an address to the socket
+    _addr.sin_family = AF_INET;
+    _addr.sin_port = htons(_port);
+    _addr.sin_addr.s_addr = htonl(_host);
+    std::memset(_addr.sin_zero, '\0', sizeof(_addr.sin_zero));
+    if (bind(_fd, (struct sockaddr *)&_addr, sizeof(_addr)) < 0)
+        return -1;
+
+    // setting the socket in non blocking mode
+    if (setNonBlocking(_fd) < 0)
+        return -1;
+    return 0;
 }
 
 /*
-start to listen for incoming connections
+starting listening of the socket for incoming connections
+    - on success, zero is returned
+    - on error, -1 is returned, and errno is set to indicate the error.
 */
-void    Socket::startListening()
+int    Socket::startListening()
 {
-    if (listen(_socket_fd, BACKLOG) < 0)
-    {
-        Logger::log(RED, ERROR, "Socket could not listen: %s", strerror(errno));
-        exit(EXIT_FAILURE);
-    }
-    Logger::log(GREY, DEBUG, "fd[%i] started listening", _socket_fd);
+    if (listen(_fd, BACKLOG) < 0)
+        return -1;
+    return 0;
 }
 
 /*
-accept new connection
+accepting new incomming connection on the socket
+    - setting the new socket for the connection in non blocking mode
+    - on success, the fd of the new socket is returned
+    - on error, -1 is returned, and errno is set to indicate the error
 */
 int    Socket::acceptConnection()
 {
     int new_socket;
-    int addrlen = sizeof(_socket_address);
+    int addrlen = sizeof(_addr);
 
-    if ((new_socket = accept(_socket_fd, (struct sockaddr *)&_socket_address, (socklen_t*)&addrlen)) < 0)
-    {
-        Logger::log(RED, ERROR, "Socket could not accept connection: %s", strerror(errno));
-        exit(EXIT_FAILURE);        
-    }
-    setNonBlocking(new_socket);
-    return (new_socket);
+    if ((new_socket = accept(_fd, (struct sockaddr *)&_addr, (socklen_t*)&addrlen)) < 0)
+        return -1;
+    if (setNonBlocking(_fd) < 0)
+        return -1;
+    return new_socket;
 }

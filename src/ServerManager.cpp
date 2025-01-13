@@ -3,6 +3,7 @@
 // =============   Constructor   ============= //
 ServerManager::ServerManager()
 {
+    _epoll_fd = 0;
 }
 
 // ============   Deconstructor   ============ //
@@ -12,44 +13,72 @@ ServerManager::~ServerManager()
 
 // ================   Utils   ================ //
 /*
-adds the add_fd to the epoll instance
+adds the add_fd to the epoll instance for EPOLLIN events
+    - on success, zero is returned
+    - on error, -1 is returned, and errno is set to indicate the error.
 */
-static void    addToEpollInstance(int epoll_fd, int add_fd)
+static int    addToEpollInstance(int epoll_fd, int add_fd)
 {
     struct epoll_event event;
     event.events = EPOLLIN; 
     event.data.fd = add_fd;
     if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, add_fd, &event) == -1)
-        Logger::log(RED, ERROR, "adding fd[%i] to epoll instance failed", add_fd);
+        return -1;
+    return 0;
 }
 
 // ======   Private member functions   ======= //
 /*
 accepting a new connection:
-    - adding the new client into the client_map 
+    - checking for MAX_CONNECTIONS
+    - initializing the Client struct
+    - accepting the new connection on the socket
     - adding client_fd to the epoll instance
+    - adding the new client into the client_map 
 */
 void    ServerManager::_acceptNewConnection(int socket_fd)
 {
+    // checking for MAX_CONNECTIONS
     if (_client_map.size() >= MAX_CONNECTIONS)
     {
         Logger::log(YELLOW, INFO, "Did not accept new connection, because there are allready MAX_CONNECTIONS[%i]", MAX_CONNECTIONS);
         return ;
     }
 
-    // initializing the Client struct
-    Client  client;
+    // searching socket_fd in the _socket_map
+    if (_socket_map.count(socket_fd) == 0)
+    {
+        Logger::log(RED, ERROR, "Could not find Socket in the socket_map");
+        return ;
+    }
+
+    // accept connection on socket
+    Client client;
 
     client.socket = &_socket_map[socket_fd];
-    client._client_fd = client.socket->acceptConnection();
+    if ((client._client_fd = client.socket->acceptConnection()) < 0)
+    {
+        Logger::log(RED, ERROR, "Socket could not accept connection: %s", strerror(errno));
+        return ;
+    }
+    client._client_address = client.socket->getSocketAddress();
+    client._last_msg_time = time(NULL);
+
     client.request.setSocket(client.socket);
     client.request.setServerBlocks(_server_blocks);
-    client._client_address = client.socket->getSocketAddress();
+
+    //  adding client_fd to epoll instance 
+    if (addToEpollInstance(_epoll_fd, client._client_fd) < 0)
+    {
+        Logger::log(RED, ERROR, "adding fd[%i] to epoll instance failed", client._client_fd);
+        return ;
+    }
+
+    // adding new client to _client_map and delete old client with same fd if necessary
     if (_client_map.count(client._client_fd) > 0)
         _client_map.erase(client._client_fd);
-    client._last_msg_time = time(NULL);
     _client_map.insert(std::make_pair(client._client_fd, client));
-    addToEpollInstance(_epoll_fd, client._client_fd);
+
     Logger::log(CYAN, INFO, "Accpted new connection on fd[%i] from address[%s]", client._client_fd, inAddrToIpString(client._client_address.sin_addr.s_addr).c_str());
 }
 
@@ -61,16 +90,16 @@ closes connection:
 */
 void    ServerManager::_closeConnection(int fd)
 {
-    if (epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, fd, NULL) == -1)
-        Logger::log(RED, ERROR, "Deleting fd[%i] from epoll instance failed", fd);
+    if (epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, fd, NULL) < 0)
+        Logger::log(RED, ERROR, "Deleting fd[%i] from epoll instance failed: %s", fd, strerror(errno));
     if (close(fd))
-        Logger::log(RED, ERROR, "Closing fd[%i] failed", fd);
+        Logger::log(RED, ERROR, "Closing fd[%i] failed: %s", fd, strerror(errno));
     _client_map.erase(fd);
     Logger::log(CYAN, INFO, "Closed connection on fd[%i]", fd);
 }
 
 /*
-checking for timeouts of clients in the _client_map
+checking for timeouts of all clients in the _client_map
 */
 void    ServerManager::_checkTimeout()
 {
@@ -89,7 +118,7 @@ void    ServerManager::_checkTimeout()
 }
 
 /*
-finds the default Server 
+finding the default server, when the request object retruned before finding the right server to serve with
 */
 void ServerManager::_findDefaultServer(Client &client)
 {
@@ -117,6 +146,7 @@ void    ServerManager::_readRequest(Client &client)
     int     bytes_read = 0;
     int     fd = client._client_fd;
 
+    // reading request
     bytes_read = read(fd, buffer, REQUEST_READ_SIZE);
     if (bytes_read == 0)
     {
@@ -136,6 +166,8 @@ void    ServerManager::_readRequest(Client &client)
         client.request.parse(buffer, bytes_read);
         std::memset(buffer, 0, sizeof(buffer));
     }
+
+    // checking if request is fully read
     if (client.request.getParsingState() == Parsing_Finished || client.request.getError() != OK)
     {
         Logger::log(GREEN, INFO, "Request received from client fd[%i] with method[%s] and URI[%s]", fd, client.request.getMethodStr().c_str(), client.request.getPath().c_str());
@@ -143,6 +175,7 @@ void    ServerManager::_readRequest(Client &client)
             _findDefaultServer(client);
         if (client.request.getServerBlock() == NULL)
         {
+            Logger::log(RED, ERROR, "Could not find an Server to serve with on fd[%i]", fd);
             _closeConnection(fd);
             return ;
         }
@@ -163,10 +196,11 @@ void    ServerManager::_readRequest(Client &client)
 
 /*
 sending the Response to the client:
-    - write RESPONSE_WRITE_SIZE to client_Fd
-    - clear reuquest and response objects after sending full response
-    - set epoll settings to EPOLLIN after sending response to client
-    - check if connection should be "keep-alive"
+    - write RESPONSE_WRITE_SIZE of the response to client_fd until full response is send
+    - triming the response the amount which got send to the client
+    - checking if connection should be "keep-alive"
+    - set epoll settings on client_fd to EPOLLIN
+    - clearing reuquest and response objects of the client
 */
 void    ServerManager::_sendResponse(Client &client)
 {
@@ -175,6 +209,7 @@ void    ServerManager::_sendResponse(Client &client)
 
     const std::string &response = client.response.getResponse();
 
+    // sending response to client_fd 
     if (response.size() >= RESPONSE_WRITE_SIZE)
         bytes_send = write(fd, response.c_str(), RESPONSE_WRITE_SIZE);
     else
@@ -185,9 +220,13 @@ void    ServerManager::_sendResponse(Client &client)
         _closeConnection(fd);
         return ;
     }
+
+    // checking if full response got send
     if (bytes_send == 0 || (size_t)bytes_send == response.size())
     {
         Logger::log(MAGENTA, INFO, "Response send to client fd[%i] with code[%i]", client._client_fd, client.response.getError());
+    
+        // checking if connection should be "keep-alive"
         if (client.response.getConnection() == "keep-alive")
         {
             struct epoll_event event;
@@ -211,15 +250,17 @@ void    ServerManager::_sendResponse(Client &client)
 
 // ==========   Member functions   =========== //
 /*
-setting up all server
-    - parsing the config file
-    - setting up all sockets and adding them to the _socket_map
+setting up all servers
+    - calls parsing of the config file
+    - setting up all sockets
+    - adding sockets to the _socket_map
+    - assigning sockets to the server blocks
 */
 void    ServerManager::setup(std::string config)
 {
     Logger::log(WHITE, INFO, "Setting up Servers ...");
 
-    // parsing of the config file
+    // parsing the config file 
     ConfigParser        parser(_server_blocks);
 
     parser.parse(config);
@@ -230,7 +271,7 @@ void    ServerManager::setup(std::string config)
         exit(EXIT_FAILURE);
     }
 
-    // Printing server setup
+    // printing the server setup
     for (size_t i = 0; i < _server_blocks.size(); i++)
     {
         std::string server_name = "";
@@ -261,12 +302,16 @@ void    ServerManager::setup(std::string config)
     Logger::log(GREY, DEBUG, "Setting up sockets ...");
     for (size_t i = 0; i < sockets.size(); i++)
     {
-        sockets[i].setup();
+        if (sockets[i].setup())
+        {
+            Logger::log(RED, ERROR, "Could not setup socket: %s", strerror(errno));
+            exit(EXIT_FAILURE);
+        }
         _socket_map.insert(std::pair<int, Socket>(sockets[i].getSocketFd(), sockets[i]));
         Logger::log(GREY, DEBUG, "Socket setup: Host[%s] Port[%i]", inAddrToIpString(htonl(sockets[i].getHost())).c_str(), sockets[i].getPort());
     }
 
-    // assign sockets to servers
+    // assigning sockets to server blocks
     for (size_t i = 0; i < _server_blocks.size(); i++)
     {
         for (std::map<int, Socket>::iterator it = _socket_map.begin(); it != _socket_map.end(); it++)
@@ -306,10 +351,20 @@ void    ServerManager::boot()
     // adds all server_fds to epoll instance and starts listening on the server sockets
     for (std::map<int, Socket>::iterator it = _socket_map.begin(); it != _socket_map.end(); it++)
     {
-        addToEpollInstance(_epoll_fd, it->second.getSocketFd());
-        it->second.startListening();
+        if (addToEpollInstance(_epoll_fd, it->second.getSocketFd()) < 0)
+        {
+            Logger::log(RED, ERROR, "adding fd[%i] to epoll instance failed", it->second.getSocketFd());
+            exit(EXIT_FAILURE);
+        }
+        if (it->second.startListening() < 0)
+        {
+            Logger::log(RED, ERROR, "Socket could not listen: %s", strerror(errno));
+            exit(EXIT_FAILURE);
+        }
+        
     }
     Logger::log(WHITE, INFO, "Booted Servers successfully");
+
     // main server loop
     struct epoll_event event_list[MAX_EPOLL_EVENTS];
 
@@ -319,8 +374,12 @@ void    ServerManager::boot()
         int num_events = epoll_wait(_epoll_fd, event_list, MAX_EPOLL_EVENTS, -1);
         if (num_events == -1)
         {
-            Logger::log(RED, ERROR, "Waiting for event on the epoll instance failed");
-            exit(EXIT_FAILURE);
+            Logger::log(RED, ERROR, "Waiting for event on the epoll instance failed: %s", strerror(errno));
+            // Interrupted by a signal; retry
+            if (errno == EINTR)
+                continue ;
+            else
+                exit(EXIT_FAILURE);
         }
         // handling of the epoll event list
         for (int i = 0; i < num_events; i++)

@@ -1,6 +1,0 @@
-------WebKitFormBoundaryEB9AyOybxPuXcADv
-Content-Disposition: form-data; name="file"; filename="example.txt"
-Content-Type: text/plain
-
-lul
-------WebKitFormBoundaryEB9AyOybxPuXcADv--

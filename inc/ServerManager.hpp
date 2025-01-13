@@ -4,8 +4,6 @@
 #include "Client.hpp"
 #include "Response.hpp"
 
-class Server;
-
 class ServerManager
 {
 private:

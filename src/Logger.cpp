@@ -22,7 +22,7 @@ void    Logger::setOutputMode(LogOutput output)
 
 // ================   Utils   ================ //
 /*
-returns an timestamp with the format [day/month/year  hours:minutes:seconds]
+returns an timestamp string with the format [day/month/year  hours:minutes:seconds]
 */
 static std::string getTimestamp()
 {

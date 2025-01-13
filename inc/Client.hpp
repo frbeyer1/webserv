@@ -4,8 +4,6 @@
 #include "Request.hpp"
 #include "Response.hpp"
 
-class Response;
-
 struct Client
 {
     struct sockaddr_in  _client_address;
