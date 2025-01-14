@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/assets/css/styles.css">
+    <title>WebServ</title>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <a href="/assets/videos/intro.mp4">
+                <img src="/images/logo.png" alt="Logo" />
+            </a>
+        </div>
+        <nav>
+            <a href="/upload.html" >Upload file</a>
+            <a href="/uploads/">Uploads</a>
+            <a href="/surprise.html">Surprise</a>
+            <a href="/cgi_test.html">CGI Stuff</a>
+        </nav>
+    </header>
+    <main>
+        <div class="info">
+            <h1>Can you believe it guys? CGI Test, just one click away! Woohoo! I am so happy about this information.</h1>
+            <img src="/images/heisenberg-dance.gif" alt="walter_breaking_it_down">
+
+            <h2>
+                Here you go:
+                <!-- <a href="/cgi-bin/add.py?x=1&y=2" target="_blank" style="color:#0000FF;">1+2 Calculator </a> | 
+                <a href="/cgi-bin/user.py" target="_blank" style="color:#0000FF;">Funny Website CGI Script </a> |  -->
+                <a href="/cgi-bin/raw_query.py?x=1&y=2&name=lol" target="_blank" style="color:#0000FF;">Raw Query passed into CGI</a>
+            </h2>
+            <h2>Do Math (plus):</h2>
+            <form action="/cgi-bin/add.py" method="get">
+                <label for="x">First Number:</label>
+                <input type="text" id="x" name="x" required><br><br>
+                
+                <label for="y">Second Number:</label>
+                <input type="text" id="y" name="y" required><br><br>
+                <input type="submit" value="Now do it">
+            </form>
+            <h2>Funny Website:</h2>
+            <form action="/cgi-bin/add.py" method="get">
+                <label for="x">Gimme your name:</label>
+                <input type="text" id="name" name="name" required><br><br>
+                
+                <input type="submit" value="Computer, generate me a overcomplicated website with my name in it">
+            </form>
+            <div class="container">
+                <form action="/cgi-bin/upload.py" method="POST" enctype="multipart/form-data">
+                <h2>Upload a File but cool</h2>
+                <input type="file" id="fileUpload" name="fileUpload" required><br>
+                <input type="submit" value="Upload">
+                </form>
+            </div>
+        </div>  
+    </main>
+</body>
+</html>
+

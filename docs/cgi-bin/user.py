@@ -1,21 +1,11 @@
 #!/usr/bin/env python3
 import sys
 import cgi
-import cgitb
-
-# Enable CGI error reporting
-cgitb.enable()
 
 def main():
     print("Content-Type: text/html\n")
 
-    # Check if a username is provided as an argument
-    # if len(sys.argv) < 2:
-        # username = "Guest"
-    # else:
-        # username = sys.argv[1]
-
-    username = "Guest"
+    username = form.getvalue('name', 'Guest')
     # HTML template with embedded CSS
     html_template = """
     <!DOCTYPE html>
