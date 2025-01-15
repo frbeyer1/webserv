@@ -7,6 +7,7 @@ SRC		=	src/main.cpp			\
 			src/ConfigParser.cpp	\
 			src/Response.cpp		\
 			src/Socket.cpp			\
+			src/CgiHandler.cpp		\
 
 OBJ		= $(SRC:.cpp=.o)
 

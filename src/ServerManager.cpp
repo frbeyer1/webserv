@@ -179,7 +179,7 @@ void    ServerManager::_readRequest(Client &client)
             _closeConnection(fd);
             return ;
         }
-        client.response.buildResponse(client.request, client._client_fd);
+        client.response.buildResponse(client.request, client._client_address);
         Logger::log(GREY, DEBUG, "Finished response building");
         struct epoll_event event;
 
@@ -227,7 +227,7 @@ void    ServerManager::_sendResponse(Client &client)
         Logger::log(MAGENTA, INFO, "Response send to client fd[%i] with code[%i]", client._client_fd, client.response.getError());
     
         // checking if connection should be "keep-alive"
-        if (client.response.getConnection() == "keep-alive")
+        if (client.response.checkConnection())
         {
             struct epoll_event event;
 

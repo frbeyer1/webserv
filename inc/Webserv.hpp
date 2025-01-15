@@ -15,11 +15,13 @@
 #include <sys/wait.h>
 
 #include <iostream>
+#include <iomanip>
 #include <sstream>
 #include <fstream>
 #include <ctime>
 #include <cstring>
 #include <cstdarg>
+#include <algorithm>
 #include <map>
 #include <vector>
 
@@ -28,6 +30,7 @@
 #include "Request.hpp"
 #include "Logger.hpp"
 #include "Socket.hpp"
+#include "CgiHandler.hpp"
 
 /* ========== Logger Settings ========== */
 #define LOGFILE_NAME                                "webserv.log"
@@ -63,7 +66,6 @@
 /* ========= HTTP Error Codes ========== */
 #define OK                                          200
 #define CREATED                                     201
-#define ACCEPTED                                    202
 #define NO_CONTENT                                  204
 #define MOVED_PERMANENTLY                           301
 #define BAD_REQUEST                                 400
