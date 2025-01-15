@@ -1,7 +1,6 @@
 #include "../inc/Webserv.hpp"
 #include "../inc/ServerManager.hpp"
 
-
 void signal_handler(int signal)
 { 
     (void)signal;
