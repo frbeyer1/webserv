@@ -336,6 +336,8 @@ void Response::_handlePost(Request &request, std::string path, Location &locatio
     }
     struct stat file_info;
 
+    // std::cout << request.getHeaders().at("Content-Type") << std::endl;
+    // std::cout << request.getBody() << std::endl;
     if (stat(path.c_str(), &file_info) == 0 && S_ISDIR(file_info.st_mode)) // upload a file
     {
         size_t content_start;
@@ -344,6 +346,7 @@ void Response::_handlePost(Request &request, std::string path, Location &locatio
         std::string filepath;
         filepath = location._upload;
     
+        std::cout << request.getBody() << std::endl;
         if(request.getHeaders().at("Content-Type").find("multipart/form-data") != std::string::npos)
         {
             std::istringstream file_content(request.getBody());
