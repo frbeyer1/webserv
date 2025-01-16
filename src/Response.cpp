@@ -379,11 +379,15 @@ void Response::_handlePost(Request &request, std::string path, Location &locatio
             content_start = 0;
             content_end = request.getBody().length();
         }
+        std::ifstream file(filepath.c_str());
+        if (file.good())
+            _error = NO_CONTENT;
         std::ofstream outFile(filepath.c_str(), std::ios::binary);
         if(outFile.is_open()){
             outFile << request.getBody().substr(content_start, content_end - content_start);
             outFile.close();
-            _error = CREATED;
+            if(_error != NO_CONTENT)
+                _error = CREATED;
             return;
         }
         else
@@ -393,7 +397,7 @@ void Response::_handlePost(Request &request, std::string path, Location &locatio
         }
     }
     else // checks if target is regular file
-    {   
+    {
         // write to existing file
         if (stat(path.c_str(), &file_info) == 0 && S_ISREG(file_info.st_mode))
         {
