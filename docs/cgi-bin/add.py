@@ -16,7 +16,7 @@ num2 = int(form.getvalue('y', '0'))
 total = num1 + num2
 
 # Print the HTTP header
-print("Content-type: text/html\n")
+print("Content-Type: text/html\n")
 
 # Print the HTML content
 print("<html>")
