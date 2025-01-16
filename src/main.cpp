@@ -33,7 +33,6 @@ int main(int argc, char **argv)
 // ======= TO DO ========
 
 // RESPONSE:
-// - add that the file gets uploaded at the path specified in the upload directive
 // - check that if the uploaded file is allready there it updates it, and returns 200 OK or 204 (if 200 how to print success page)
 // - POST with an script.py what is not there -> should upload or should say not found ???
 // - multi file (multipart/form-data) and plain/text upload possible ??? (and what happens when content-type is something else)

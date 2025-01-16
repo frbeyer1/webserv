@@ -151,7 +151,7 @@ std::string intToStr(int n)
 }
 
 /*
-build and returns an default html error page with the error_code
+build and returns an default html page with the error_code
 */
 static std::string _buildDefaultErrorPage(int error_code)
 {   
@@ -342,6 +342,7 @@ void Response::_handlePost(Request &request, std::string path, Location &locatio
         size_t content_end;
         std::string filename;
         std::string filepath;
+        filepath = location._upload;
     
         if(request.getHeaders().at("Content-Type").find("multipart/form-data") != std::string::npos)
         {
@@ -351,7 +352,6 @@ void Response::_handlePost(Request &request, std::string path, Location &locatio
             boundary.erase(boundary.find_last_not_of("\r\n") + 1);
             std::string boundary_end = boundary;
             boundary_end.append("--");
-
             size_t pos = request.getBody().find("filename") + 10;
             if (pos != std::string::npos)
             {
@@ -366,7 +366,8 @@ void Response::_handlePost(Request &request, std::string path, Location &locatio
             else{
                 _error = BAD_REQUEST;
                 return ;}
-            filepath = path + "/" + filename;
+            
+            filepath = filepath + "/" + filename;
             content_end = request.getBody().find(boundary_end) - 2;
             content_start = request.getBody().find("\r\n\r\n") + 4;
         }
@@ -374,7 +375,7 @@ void Response::_handlePost(Request &request, std::string path, Location &locatio
         {
             filename = getCurrentDateTime();
             path = location._alias;
-            filepath = path + filename;
+            filepath = filepath + filename;
             content_start = 0;
             content_end = request.getBody().length();
         }
