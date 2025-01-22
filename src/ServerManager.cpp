@@ -1,33 +1,71 @@
 #include "../inc/ServerManager.hpp"
 
 // =============   Constructor   ============= //
+
 ServerManager::ServerManager()
 {
     _epoll_fd = 0;
 }
 
 // ============   Deconstructor   ============ //
+
 ServerManager::~ServerManager()
 {
 }
 
 // ================   Utils   ================ //
+
 /*
 adds the add_fd to the epoll instance for EPOLLIN events
-    - on success, zero is returned
-    - on error, -1 is returned, and errno is set to indicate the error.
+Returns zero on success, -1 on error
 */
-static int    addToEpollInstance(int epoll_fd, int add_fd)
+static int    addToEpollInstance(int epoll_fd, int add_fd, int client_fd)
 {
-    struct epoll_event event;
-    event.events = EPOLLIN; 
-    event.data.fd = add_fd;
-    if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, add_fd, &event) == -1)
+    struct epoll_event listening_event;
+
+	e_data* data = new e_data;
+	data->fd = add_fd;
+	data->client_fd = client_fd;
+	listening_event.data.ptr = data;
+	listening_event.events = EPOLLIN;
+    if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, add_fd, &listening_event) == -1)
         return -1;
     return 0;
 }
 
+// EPOLLRDHUP
+// static int    addToEpollInstance2(int epoll_fd, int add_fd, int client_fd)
+// {
+//     struct epoll_event listening_event;
+
+// 	e_data* data = new e_data;
+// 	data->fd = add_fd;
+// 	data->client_fd = client_fd;
+// 	listening_event.data.ptr = data;
+// 	listening_event.events = EPOLLIN | EPOLLOUT;
+//     if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, add_fd, &listening_event) == -1)
+//         return -1;
+//     return 0;
+// }
+
+
+static int    addToEpollInstance3(int epoll_fd, int add_fd, int client_fd)
+{
+    struct epoll_event listening_event;
+
+	e_data* data = new e_data;
+	data->fd = add_fd;
+	data->client_fd = client_fd;
+	listening_event.data.ptr = data;
+	listening_event.events = EPOLLOUT;
+    if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, add_fd, &listening_event) == -1)
+        return -1;
+    return 0;
+}
+
+
 // ======   Private member functions   ======= //
+
 /*
 accepting a new connection:
     - checking for MAX_CONNECTIONS
@@ -56,30 +94,30 @@ void    ServerManager::_acceptNewConnection(int socket_fd)
     Client client;
 
     client.socket = &_socket_map[socket_fd];
-    if ((client._client_fd = client.socket->acceptConnection()) < 0)
+    if ((client.client_fd = client.socket->acceptConnection()) < 0)
     {
         Logger::log(RED, ERROR, "Socket could not accept connection: %s", strerror(errno));
         return ;
     }
-    client._client_address = client.socket->getSocketAddress();
-    client._last_msg_time = time(NULL);
+    client.client_address = client.socket->getSocketAddress();
+    client.last_msg_time = time(NULL);
 
     client.request.setSocket(client.socket);
     client.request.setServerBlocks(_server_blocks);
 
     //  adding client_fd to epoll instance 
-    if (addToEpollInstance(_epoll_fd, client._client_fd) < 0)
+    if (addToEpollInstance(_epoll_fd, client.client_fd, -1) < 0)
     {
-        Logger::log(RED, ERROR, "adding fd[%i] to epoll instance failed", client._client_fd);
+        Logger::log(RED, ERROR, "adding fd[%i] to epoll instance failed", client.client_fd);
         return ;
     }
 
     // adding new client to _client_map and delete old client with same fd if necessary
-    if (_client_map.count(client._client_fd) > 0)
-        _client_map.erase(client._client_fd);
-    _client_map.insert(std::make_pair(client._client_fd, client));
+    if (_client_map.count(client.client_fd))
+        _client_map.erase(client.client_fd);
+    _client_map.insert(std::make_pair(client.client_fd, client));
 
-    Logger::log(CYAN, INFO, "Accpted new connection on fd[%i] from address[%s]", client._client_fd, inAddrToIpString(client._client_address.sin_addr.s_addr).c_str());
+    Logger::log(CYAN, INFO, "Accpted new connection on fd[%i] from address[%s]", client.client_fd, inAddrToIpString(client.client_address.sin_addr.s_addr).c_str());
 }
 
 /*
@@ -107,7 +145,7 @@ void    ServerManager::_checkTimeout()
 
     for (std::map<int, Client>::iterator it = _client_map.begin(); it != _client_map.end(); it++)
     {
-        if (time(NULL) - it->second._last_msg_time > CLIENT_CONNECTION_TIMEOUT)
+        if (time(NULL) - it->second.last_msg_time > CLIENT_CONNECTION_TIMEOUT)
             timeouts.push_back(it->first);
     }
     for (size_t i = 0; i < timeouts.size(); i++)
@@ -118,36 +156,19 @@ void    ServerManager::_checkTimeout()
 }
 
 /*
-finding the default server, when the request object retruned before finding the right server to serve with
-*/
-void ServerManager::_findDefaultServer(Client &client)
-{
-    if (client.socket == NULL)
-        return ;
-    for (size_t i  = 0; i < _server_blocks.size(); i++)
-    {
-        if (_server_blocks[i]._host == client.socket->getHost() && _server_blocks[i]._port == client.socket->getPort())
-        {
-            client.request.setServerBlock(&_server_blocks[i]);
-            return ;
-        }
-    }
-}
-
-/*
 Reading of the HTTP Request:
     - reading READ_SIZE amount of octest from the client into an buffer
     - parsing the buffer into an HttpRequest object
     - set epoll settings to EPOLLOUT on client_fd if recieved full request
 */
-void    ServerManager::_readRequest(Client &client)
+void    ServerManager::_readRequest(Client &client, struct epoll_event event)
 {
-    uint8_t buffer[REQUEST_READ_SIZE];
+    uint8_t buffer[READ_BUFFER_SIZE];
     int     bytes_read = 0;
-    int     fd = client._client_fd;
+    int     fd = client.client_fd;
 
     // reading request
-    bytes_read = read(fd, buffer, REQUEST_READ_SIZE);
+    bytes_read = read(fd, buffer, READ_BUFFER_SIZE);
     if (bytes_read == 0)
     {
         Logger::log(CYAN, INFO, "Client fd[%i] closed connection", fd);
@@ -162,7 +183,7 @@ void    ServerManager::_readRequest(Client &client)
     }
     else
     {
-        client._last_msg_time = time(NULL);
+        client.last_msg_time = time(NULL);
         client.request.parse(buffer, bytes_read);
         std::memset(buffer, 0, sizeof(buffer));
     }
@@ -172,19 +193,19 @@ void    ServerManager::_readRequest(Client &client)
     {
         Logger::log(GREEN, INFO, "Request received from client fd[%i] with method[%s] and URI[%s]", fd, client.request.getMethodStr().c_str(), client.request.getPath().c_str());
         if (client.request.getServerBlock() == NULL)
-            _findDefaultServer(client);
-        if (client.request.getServerBlock() == NULL)
         {
             Logger::log(RED, ERROR, "Could not find an Server to serve with on fd[%i]", fd);
             _closeConnection(fd);
             return ;
         }
-        client.response.buildResponse(client.request, client._client_address);
-        Logger::log(GREY, DEBUG, "Finished response building");
-        struct epoll_event event;
-
+        client.response.buildResponse(client.request, client.client_fd, client.client_address);
+        if (client.response.cgi_state != No_Cgi)
+        {
+            if (client.response.cgi.pipe_in[1] != -1)
+                addToEpollInstance3(_epoll_fd, client.response.cgi.pipe_in[1], client.client_fd);
+            addToEpollInstance(_epoll_fd, client.response.cgi.pipe_out[0], client.client_fd);
+        }
         event.events = EPOLLOUT;
-        event.data.fd = fd;
         if (epoll_ctl(_epoll_fd, EPOLL_CTL_MOD, fd, &event))
         {
             Logger::log(RED, ERROR, "Changing settings associated with fd[%i] in epoll instance failed", fd);
@@ -202,16 +223,37 @@ sending the Response to the client:
     - set epoll settings on client_fd to EPOLLIN
     - clearing reuquest and response objects of the client
 */
-void    ServerManager::_sendResponse(Client &client)
+void    ServerManager::_sendResponse(Client &client, struct epoll_event event)
 {
+    if (client.response.cgi_state != No_Cgi && client.response.cgi_state != Cgi_Done)
+    {
+        if (client.response.cgi.finished_execution == true)
+            return;
+        if (difftime(time(NULL), client.response.cgi.getStartTime()) > CGI_TIMEOUT)
+        {
+            kill(client.response.cgi.getCgiPid(), SIGKILL);
+            client.response.cgi.setError(GATEWAY_TIMEOUT);
+            client.response.cgi.finished_execution = true;
+        }
+        else
+        {
+            int status;
+            if (waitpid(client.response.cgi.getCgiPid(), &status, WNOHANG) == 0)
+                return;
+		    if (!WIFEXITED(status))
+                client.response.cgi.setError(INTERNAL_SERVER_ERROR);
+            client.response.cgi.finished_execution = true;
+        }
+        return;
+    }
+
     int bytes_send = 0;
-    int fd = client._client_fd;
+    int fd = client.client_fd;
 
     const std::string &response = client.response.getResponse();
 
-    // sending response to client_fd 
-    if (response.size() >= RESPONSE_WRITE_SIZE)
-        bytes_send = write(fd, response.c_str(), RESPONSE_WRITE_SIZE);
+    if (response.size() >= WRITE_BUFFER_SIZE)
+        bytes_send = write(fd, response.c_str(), WRITE_BUFFER_SIZE);
     else
         bytes_send = write(fd, response.c_str(), response.size());
     if (bytes_send < 0)
@@ -224,19 +266,17 @@ void    ServerManager::_sendResponse(Client &client)
     // checking if full response got send
     if (bytes_send == 0 || (size_t)bytes_send == response.size())
     {
-        Logger::log(MAGENTA, INFO, "Response send to client fd[%i] with code[%i]", client._client_fd, client.response.getError());
+        Logger::log(MAGENTA, INFO, "Response send to client fd[%i] with code[%i]", client.client_fd, client.response.getError());
     
         // checking if connection should be "keep-alive"
         if (client.response.checkConnection())
         {
-            struct epoll_event event;
-
             event.events = EPOLLIN;
-            event.data.fd = fd;
             if (epoll_ctl(_epoll_fd, EPOLL_CTL_MOD, fd, &event))
             {
-                Logger::log(RED, ERROR, "Changing settings associated with fd[%i] in epoll instance failed", _epoll_fd);
-                exit(EXIT_FAILURE);
+                Logger::log(RED, ERROR, "Changing settings associated with fd[%i] in epoll instance failed", fd);
+                _closeConnection(fd);
+                return ;
             }
             client.response.clear();
             client.request.clear();
@@ -248,7 +288,78 @@ void    ServerManager::_sendResponse(Client &client)
         client.response.trimResponse(bytes_send);
 }
 
+/*
+...
+*/
+void ServerManager::_writeBodyToCgi(Client &client, int pipe_fd)
+{
+    int bytes_sent;
+    std::string &req_body = client.request.getBody();
+
+    if (req_body.empty())
+        bytes_sent = 0;
+    else if (req_body.length() >= WRITE_BUFFER_SIZE)
+        bytes_sent = write(pipe_fd, req_body.c_str(), WRITE_BUFFER_SIZE);
+    else
+        bytes_sent = write(pipe_fd, req_body.c_str(), req_body.length());
+
+    if (bytes_sent < 0)
+    {
+        Logger::log(RED, ERROR, "Write Error: failed to write request body to cgi pipe_in: %s", strerror(errno));
+        if (epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, pipe_fd, NULL) < 0)
+            Logger::log(RED, ERROR, "Deleting fd[%i] from epoll instance failed: %s", pipe_fd, strerror(errno));
+        close(client.response.cgi.pipe_in[1]);
+        client.response.cgi.setError(INTERNAL_SERVER_ERROR);
+        client.response.cgi_state = Cgi_Read;
+    }
+    else if (bytes_sent == 0 || (size_t) bytes_sent == req_body.length())
+    {
+        if (epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, pipe_fd, NULL) < 0)
+            Logger::log(RED, ERROR, "Deleting fd[%i] from epoll instance failed: %s", pipe_fd, strerror(errno));
+        close(client.response.cgi.pipe_in[1]);
+        client.response.cgi_state = Cgi_Read;
+    }
+    else
+        req_body = req_body.substr(bytes_sent);
+}
+
+/*
+...
+*/
+void ServerManager::_readCgiResponse(Client &client, int pipe_fd)
+{
+    uint8_t buffer[READ_BUFFER_SIZE];
+    int     bytes_read = 0;
+
+    bytes_read = read(pipe_fd, buffer, READ_BUFFER_SIZE);
+
+    if (bytes_read < 0)
+    {
+        Logger::log(RED, ERROR, "read error on cgi output: ", strerror(errno));
+        if (epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, pipe_fd, NULL) < 0)
+            Logger::log(RED, ERROR, "Deleting fd[%i] from epoll instance failed: %s", pipe_fd, strerror(errno));
+        close(client.response.cgi.pipe_out[0]);
+        client.response.cgi_state = Cgi_Done;
+        client.response.cgi.setError(INTERNAL_SERVER_ERROR);
+        client.response.constructResponseStr(client.request);
+    }
+    else if (bytes_read == 0)
+    {
+        if (epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, pipe_fd, NULL) < 0)
+            Logger::log(RED, ERROR, "Deleting fd[%i] from epoll instance failed: %s", pipe_fd, strerror(errno));
+        close(client.response.cgi.pipe_out[0]);
+        client.response.cgi_state = Cgi_Done;
+        client.response.constructResponseStr(client.request);
+    }
+    else
+    {
+        client.response.cgi.parseCgi(buffer, bytes_read);
+		memset(buffer, 0, sizeof(buffer));
+    }
+}
+
 // ==========   Member functions   =========== //
+
 /*
 setting up all servers
     - calls parsing of the config file
@@ -275,16 +386,16 @@ void    ServerManager::setup(std::string config)
     for (size_t i = 0; i < _server_blocks.size(); i++)
     {
         std::string server_name = "";
-        if (!_server_blocks[i]._server_names.empty())
-            server_name = _server_blocks[i]._server_names[0];
-        Logger::log(WHITE, INFO, "Server setup: Name[%s] Host[%s] Port[%i]", server_name.c_str(), _server_blocks[i]._ip.c_str(), _server_blocks[i]._port);
+        if (!_server_blocks[i].server_names.empty())
+            server_name = _server_blocks[i].server_names[0];
+        Logger::log(WHITE, INFO, "Server setup: Name[%s] Host[%s] Port[%i]", server_name.c_str(), _server_blocks[i].ip.c_str(), _server_blocks[i].port);
     }
 
     // find all needed sockets
     std::map<uint16_t, in_addr_t> map;
 
     for (size_t i = 0; i < _server_blocks.size(); i++)
-        map.insert(std::pair<uint16_t, in_addr_t>(_server_blocks[i]._port, _server_blocks[i]._host));
+        map.insert(std::pair<uint16_t, in_addr_t>(_server_blocks[i].port, _server_blocks[i].host));
 
     // set host and port for all needed sockets
     std::vector<Socket> sockets;
@@ -307,7 +418,7 @@ void    ServerManager::setup(std::string config)
             Logger::log(RED, ERROR, "Could not setup socket: %s", strerror(errno));
             exit(EXIT_FAILURE);
         }
-        _socket_map.insert(std::pair<int, Socket>(sockets[i].getSocketFd(), sockets[i]));
+        _socket_map.insert(std::pair<int, Socket>(sockets[i].getFd(), sockets[i]));
         Logger::log(GREY, DEBUG, "Socket setup: Host[%s] Port[%i]", inAddrToIpString(htonl(sockets[i].getHost())).c_str(), sockets[i].getPort());
     }
 
@@ -316,9 +427,9 @@ void    ServerManager::setup(std::string config)
     {
         for (std::map<int, Socket>::iterator it = _socket_map.begin(); it != _socket_map.end(); it++)
         {
-            if (it->second.getHost() == _server_blocks[i]._host && it->second.getPort() == _server_blocks[i]._port)
+            if (it->second.getHost() == _server_blocks[i].host && it->second.getPort() == _server_blocks[i].port)
             {
-                _server_blocks[i]._socket = &it->second;
+                _server_blocks[i].socket = &it->second;
                 break ;
             }
         }
@@ -351,9 +462,9 @@ void    ServerManager::boot()
     // adds all server_fds to epoll instance and starts listening on the server sockets
     for (std::map<int, Socket>::iterator it = _socket_map.begin(); it != _socket_map.end(); it++)
     {
-        if (addToEpollInstance(_epoll_fd, it->second.getSocketFd()) < 0)
+        if (addToEpollInstance(_epoll_fd, it->second.getFd(), -1) < 0)
         {
-            Logger::log(RED, ERROR, "adding fd[%i] to epoll instance failed", it->second.getSocketFd());
+            Logger::log(RED, ERROR, "adding fd[%i] to epoll instance failed", it->second.getFd());
             exit(EXIT_FAILURE);
         }
         if (it->second.startListening() < 0)
@@ -384,16 +495,27 @@ void    ServerManager::boot()
         // handling of the epoll event list
         for (int i = 0; i < num_events; i++)
         {
-            int fd = event_list[i].data.fd;
+            int fd = static_cast<e_data*>(event_list[i].data.ptr)->fd;
+			int client_fd = static_cast<e_data*>(event_list[i].data.ptr)->client_fd;
 
             if (_socket_map.count(fd))
                 _acceptNewConnection(fd);
-            else if (_client_map.count(fd) && event_list[i].events & EPOLLIN)
-                _readRequest(_client_map[fd]);
-            else if (_client_map.count(fd) && event_list[i].events & EPOLLOUT)
-                _sendResponse(_client_map[fd]);
-            else
-                close(fd);
+            else if (_client_map.count(fd))
+            {
+                if (event_list[i].events & EPOLLERR || event_list[i].events & EPOLLHUP || event_list[i].events & EPOLLRDHUP)
+                    _closeConnection(fd);
+                else if (event_list[i].events & EPOLLIN)
+                    _readRequest(_client_map[fd], event_list[i]);
+                else if (event_list[i].events & EPOLLOUT)
+                    _sendResponse(_client_map[fd], event_list[i]);
+            }
+            else if (_client_map.count(client_fd))
+            {
+                if (_client_map[client_fd].response.cgi_state == Cgi_Write)
+                    _writeBodyToCgi(_client_map[client_fd], fd);
+                else if (_client_map[client_fd].response.cgi_state == Cgi_Read)
+                    _readCgiResponse(_client_map[client_fd], fd);
+            }
         }
         _checkTimeout();
     }

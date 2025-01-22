@@ -1,6 +1,7 @@
 #include "../inc/Request.hpp"
 
 // =============   Constructor   ============= //
+
 Request::Request()
 {
     clear();
@@ -8,6 +9,7 @@ Request::Request()
 }
 
 // ===========   Copy Constructor   ========== //
+
 Request::Request(const Request &rhs) : _ss(rhs._ss.str())
 {
     if (this != &rhs)
@@ -41,11 +43,13 @@ Request::Request(const Request &rhs) : _ss(rhs._ss.str())
 }
 
 // ============   Deconstructor   ============ //
+
 Request::~Request()
 {
 }
 
 // ==============   Setters   ================ //
+
 void    Request::setServerBlocks(std::vector<ServerBlock> &server_blocks)
 {
     _server_blocks = server_blocks;
@@ -62,6 +66,7 @@ void    Request::setSocket(Socket *socket)
 }
 
 // ==============   Getters   ================ //
+
 int Request::getError() const
 {
     return _error;
@@ -116,7 +121,7 @@ const std::string   &Request::getFragment() const
     return _fragment;
 }
 
-const std::string   &Request::getBody() const
+std::string   &Request::getBody()
 {
     return _body;
 }
@@ -127,6 +132,7 @@ const std::map<std::string, std::string>    &Request::getHeaders() const
 }
 
 // ================   Utils   ================ //
+
 /*
 Checks if character is allowed to be in a URI
 Characters allowed as specifed in the RFC:
@@ -248,30 +254,45 @@ static void    trimFieldValueStr(std::string &string)
 }
 
 // ======   Private Member functions   ======= //
+
+/*
+Finds the default server
+*/
+void Request::_findDefaultServerBlock()
+{
+    if (_socket == NULL)
+        return;
+    for (size_t i  = 0; i < _server_blocks.size(); i++)
+    {
+        // search for default server block
+        if (_server_blocks[i].host == _socket->getHost() && _server_blocks[i].port == _socket->getPort())
+        {
+            _server = &_server_blocks[i];
+            _client_max_body_size = _server_blocks[i].client_max_body_size;
+            return;
+        }
+    }
+    if (_server == NULL)
+        _error = BAD_REQUEST;
+}
+
 /*
 finding the correct server block for the request
 */
 void    Request::_findServerBlock(std::string host)
 {
-    bool found_default = false;
-
+    if (_socket == NULL)
+        return ;
     for (size_t i = 0; i < _server_blocks.size(); i++)
     {
-        // search for default server block
-        if (found_default == false && _server_blocks[i]._host == _socket->getHost() && _server_blocks[i]._port == _socket->getPort())
-        {
-            _server = &_server_blocks[i];
-            _client_max_body_size = _server_blocks[i]._client_max_body_size;
-            found_default = true;
-        }
         // search for server_block with the host header
-        const std::vector<std::string> &server_names = _server_blocks[i]._server_names;
+        const std::vector<std::string> &server_names = _server_blocks[i].server_names;
         for (size_t j = 0; j < server_names.size(); j++)
         {
-            if (server_names[j] == host && _server_blocks[i]._host == _socket->getHost() && _server_blocks[i]._port == _socket->getPort())
+            if (server_names[j] == host && _server_blocks[i].host == _socket->getHost() && _server_blocks[i].port == _socket->getPort())
             {
                 _server = &_server_blocks[i];
-                _client_max_body_size = _server_blocks[i]._client_max_body_size;
+                _client_max_body_size = _server_blocks[i].client_max_body_size;
                 return;
             }
         }
@@ -327,6 +348,7 @@ void    Request::parse(uint8_t *data, size_t size)
         switch (_state) {
 
         case Empty_Line:
+            _findDefaultServerBlock();
             if (ch == CR || ch == LF)
                 break;
             _method_str.push_back(ch);

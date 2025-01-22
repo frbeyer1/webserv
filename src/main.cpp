@@ -16,7 +16,7 @@ int main(int argc, char **argv)
         config = argv[1];
     else
     {
-        Logger::log(RED, ERROR, "Invalid Arguments: try './webserv [configuration file]'");
+        Logger::log(RED, ERROR, "Invalid Arguments: try './webserv <path/to/config>'");
         return (EXIT_FAILURE);
     }
     if (signal(SIGPIPE, signal_handler) == SIG_ERR)
@@ -30,13 +30,10 @@ int main(int argc, char **argv)
     master.boot();
 }
 
-// ======= TO DO ========
+// ======== TO DO =========== //
 
-// RESPONSE:
-// - POST with an script.py what is not there -> should upload or should say not found ???
-// - multiple files in post request
-
-// CGI:
-// - set REMOTE_ADDR & REMOTE_HOST & REMOTE_IDENT & REMOTE_USER
-// - make an cgi script to test POST request with cgi
-// - check for infinite loop in cgi -> kill cgi after while
+// - support multiple files upload in POST requests
+// - boundary is in uploaded file
+// - free all e_data structs
+// - upload.html has to fields and the button is to big
+// - check all comments

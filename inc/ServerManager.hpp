@@ -4,6 +4,12 @@
 #include "Client.hpp"
 #include "Response.hpp"
 
+struct e_data 
+{
+	int	fd;
+	int client_fd;
+};
+
 class ServerManager
 {
 private:
@@ -15,10 +21,11 @@ private:
 // Private member functions
     void    _acceptNewConnection(int fd);
     void    _closeConnection(int fd);
+    void    _readRequest(Client &client, struct epoll_event event);
+    void    _sendResponse(Client &client, struct epoll_event event);
+    void    _writeBodyToCgi(Client &client, int pipe_fd);
+    void    _readCgiResponse(Client &client, int pipe_fd);
     void    _checkTimeout();
-    void    _readRequest(Client &client);
-    void    _sendResponse(Client &client);
-    void    _findDefaultServer(Client &client);
 
 public:
 // Constructor

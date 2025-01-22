@@ -1,6 +1,7 @@
 #include "../inc/Socket.hpp"
 
 // =============   Constructor   ============= //
+
 Socket::Socket()
 {
     _fd = 0;
@@ -9,11 +10,14 @@ Socket::Socket()
 }
 
 // ============   Deconstructor   ============ //
+
 Socket::~Socket()
 {
+
 }
 
 // ==============   Getters   ================ //
+
 in_addr_t Socket::getHost() const
 {
     return _host;
@@ -24,7 +28,7 @@ uint16_t Socket::getPort() const
     return _port;
 }
 
-int Socket::getSocketFd() const
+int Socket::getFd() const
 {
     return _fd;
 }
@@ -35,6 +39,7 @@ struct sockaddr_in Socket::getSocketAddress() const
 }
 
 // ==============   Setters   ================ //
+
 void    Socket::setPort(uint16_t port)
 {
     _port = port;
@@ -47,12 +52,12 @@ void    Socket::setHost(in_addr_t host)
 
 
 // ================   Utils   ================ //
+
 /*
-setting an fd into non-blocking mode
-    - on success, zero is returned
-    - on error, -1 is returned, and errno is set to indicate the error.
+Set an fd into non-blocking mode
+Returns zero on success, -1 on error
 */
-static int    setNonBlocking(int fd)
+int    setNonBlocking(int fd)
 {
     // gets the current flags for the file descriptor
     int flags = fcntl(fd, F_GETFL, 0);
@@ -69,14 +74,10 @@ static int    setNonBlocking(int fd)
 }
 
 // ==========   Member functions   =========== //
+
 /*
-setting up an non blocking TCP socket for listening for new connections:
-    - creating the socket
-    - setting the socket to reuse ports
-    - binding an address to the socket
-    - setting the socket in non blocking mode
-    - on success, zero is returned
-    - on error, -1 is returned, and errno is set to indicate the error.
+Set up an non blocking TCP socket with option SO_REUSEADDR
+Returns zero on success, -1 on error
 */
 int    Socket::setup()
 {
@@ -105,9 +106,8 @@ int    Socket::setup()
 }
 
 /*
-starting listening of the socket for incoming connections
-    - on success, zero is returned
-    - on error, -1 is returned, and errno is set to indicate the error.
+Start listening of the socket for incoming connections
+Returns zero on success, -1 on error
 */
 int    Socket::startListening()
 {
@@ -117,10 +117,9 @@ int    Socket::startListening()
 }
 
 /*
-accepting new incomming connection on the socket
-    - setting the new socket for the connection in non blocking mode
-    - on success, the fd of the new socket is returned
-    - on error, -1 is returned, and errno is set to indicate the error
+Accept incomming connection on the socket
+Sets the new socket for the connection in non blocking mode
+Returns the fd of the new socket on success, -1 on error
 */
 int    Socket::acceptConnection()
 {

@@ -1,17 +1,24 @@
 #include "../inc/CgiHandler.hpp"
 
 // =============   Constructor   ============= //
-CgiHandler::CgiHandler(Request &request, ServerBlock &server, std::string script_path, std::string binary_path, sockaddr_in client_addr) : _request(request), _server(server)
+
+CgiHandler::CgiHandler()
 {
-    _state = CGI_HEADER_START;
-    _script_path = script_path;
-    _binary_path = binary_path;
+    _state = Cgi_Header_Start;
     _body = "";
     _error = OK;
-    _client_addr = client_addr;
+    _cgi_pid = 0;
+    _start_time = 0;
+    pipe_in[0] = -1;
+    pipe_in[1] = -1;
+    pipe_out[0] = -1;
+    pipe_out[1] = -1;
+    finished_execution = false;
+    _env = NULL;
 }
 
 // ============   Deconstructor   ============ //
+
 CgiHandler::~CgiHandler()
 {
     if (_env != NULL)
@@ -23,6 +30,7 @@ CgiHandler::~CgiHandler()
 }
 
 // ==============   Getters   ================ //
+
 int CgiHandler::getError() const
 {
     return _error;
@@ -38,7 +46,25 @@ std::string CgiHandler::getBody() const
     return _body;
 }
 
+int CgiHandler::getCgiPid() const
+{
+    return _cgi_pid;
+}
+
+time_t CgiHandler::getStartTime() const
+{
+    return _start_time;
+}
+
+// ==============   Setters   ================ //
+
+void CgiHandler::setError(int error)
+{
+    _error = error;
+}
+
 // ======   Private member functions   ======= //
+
 /*
 checks if the header from the cgi output is vaild and inserts it into the header map
     - returns true if valid and false if not
@@ -91,179 +117,36 @@ bool CgiHandler::_addHeader(std::string &header_name, std::string &header_value)
 }
 
 /*
-extracts the cgi output into the headers and the body
-    - changes the _error to what is in the Status header if given
-*/
-void CgiHandler::_parseCgi(std::string &output)
-{
-    uint8_t         ch = 0;
-	std::string		header_name = "";
-	std::string		header_value = "";
-    bool            parsing_finished = false;
-
-    size_t i = 0;
-    for (; i < output.size() && !parsing_finished; i++)
-	{
-		ch = output[i];
-
-		switch (_state) {
-
-		case CGI_HEADER_START:
-			if (ch == CR)
-			{
-				_state = CGI_PARSING_FINISHED;
-				break;
-			}
-			else if (ch == LF)
-			{
-				parsing_finished = true;
-				break;
-			}
-			else
-				_state = CGI_HEADER_KEY;
-				// fall through
-		case CGI_HEADER_KEY: 
-			if (ch == ':')
-			{
-				_state = CGI_HEADER_WS;
-				break;
-			}
-			else
-			{
-				header_name.append(1, ch);
-				break;
-			}
-		case CGI_HEADER_WS:
-			if (iswspace(ch))
-            {
-				_state = CGI_HEADER_VALUE;
-				break;
-            }
-			else
-            {
-                if (!_headers.empty())
-                {
-                    Logger::log(RED, ERROR, "Invalid HTTP response format: Expected space after the header name. Check CGI script: %s", _script_path.c_str());
-                    _error = INTERNAL_SERVER_ERROR;
-                    return;
-                }
-                else
-                {
-                    _body = output;
-                    parsing_finished = true;
-                    break;
-                }
-            }
-		case CGI_HEADER_VALUE:
-			if (ch == CR)
-				break;
-			if (ch == LF)
-				_state = CGI_HEADER_END;
-			else
-			{
-				header_value.append(1, ch);
-				break;
-			}
-			// fall through
-		case CGI_HEADER_END:
-            if (!_addHeader(header_name, header_value))
-            {
-                _error = INTERNAL_SERVER_ERROR;
-                Logger::log(RED, ERROR, "Invalid HTTP response format: Invalid HTTP header. Check CGI script: %s", _script_path.c_str());
-            }
-			header_name.clear();
-			header_value.clear();
-			_state = CGI_HEADER_START;
-			break;
-		case CGI_PARSING_FINISHED:
-			if (ch == LF)
-			{
-				parsing_finished = true;
-				break;
-			}
-			_error = INTERNAL_SERVER_ERROR;
-            Logger::log(RED, ERROR, "Invalid HTTP response format: Expected newline character ('\n') after carriage return ('\r'). Check CGI script: %s", _script_path.c_str());
-            return;
-		}
-    }
-
-    // extract body
-    if (_body.empty())
-    {
-        if (output[i])
-            _body = output.substr(i, output.size() - i);
-        else
-            _body = output;
-    }
-
-    // check for status header
-    if (_headers.count("Status"))
-    {
-        _error = atoi(_headers["Status"].c_str());
-        if (_error < 100 || _error >= 600)
-        {
-            _error = INTERNAL_SERVER_ERROR;
-            Logger::log(RED, ERROR, "Invalid HTTP status code specified in CGI script");
-            return;
-        }
-    }
-}
-
-/*
-reads cgi output from fd
-*/
-void CgiHandler::_readCgi(int fd) 
-{
-    const int BUFSIZE = 4096;
-	char buffer[BUFSIZE];
-	int bytesRead = 1;
-	std::string output;
-
-	while (bytesRead > 0) 
-    {		
-		bytesRead = read(fd, buffer, BUFSIZE);
-		if (bytesRead < 0)
-        {
-            _error = INTERNAL_SERVER_ERROR;
-            Logger::log(RED, ERROR, "CGI: Read error on fd[%i]: %s", fd, strerror(errno));
-            return;
-        }
-		output.append(buffer, bytesRead);
-	}
-    _parseCgi(output);
-}
-
-/*
 building the environment for the cgi call
 */
-void CgiHandler::_buildEnvironment()
+void CgiHandler::_buildEnvironment(Request &request, ServerBlock &server, sockaddr_in client_addr)
 {
     std::map<std::string, std::string> tmp_env;
 
     // build temporary environment
-    if (_request.getMethod() == POST)
+    if (request.getMethod() == POST)
     {
-        tmp_env["CONTENT_LENGTH"] = intToStr(_request.getBody().size());
-        tmp_env["CONTENT_TYPE"] = const_cast<std::map<std::string, std::string>&>(_request.getHeaders())["Content-Type"];
+        tmp_env["CONTENT_LENGTH"] = intToStr(request.getBody().size());
+        tmp_env["CONTENT_TYPE"] = const_cast<std::map<std::string, std::string>&>(request.getHeaders())["Content-Type"];
     }
     tmp_env["AUTH_TYPE"] = "";
-    tmp_env["PATH_INFO"] = _request.getPath(); // must be full path (requested by subject)
-    tmp_env["PATH_TRANSLATED"] = _server._root + _request.getPath();
-    tmp_env["QUERY_STRING"] = _request.getQuery();
-    tmp_env["REMOTE_ADDR"] = inAddrToIpString(_client_addr.sin_addr.s_addr);
+    tmp_env["PATH_INFO"] = request.getPath(); // must be full path (requested by subject)
+    tmp_env["PATH_TRANSLATED"] = server.root + request.getPath();
+    tmp_env["QUERY_STRING"] = request.getQuery();
+    tmp_env["REMOTE_ADDR"] = inAddrToIpString(client_addr.sin_addr.s_addr);
     // tmp_env["REMOTE_HOST"] = ""; // not needed
     // tmp_env["REMOTE_IDENT"] = ""; // not needed
     // tmp_env["REMOTE_USER"] = ""; // not needed
-    tmp_env["REQUEST_METHOD"] = _request.getMethodStr();
+    tmp_env["REQUEST_METHOD"] = request.getMethodStr();
     tmp_env["SCRIPT_NAME"] = _script_path;
-    tmp_env["SERVER_NAME"] = _server._ip; // takes the first server name
-    tmp_env["SERVER_PORT"] = intToStr(_server._port);
+    tmp_env["SERVER_NAME"] = server.ip; // takes the first server name
+    tmp_env["SERVER_PORT"] = intToStr(server.port);
     tmp_env["SERVER_PROTOCOL"] = "HTTP/1.1";
     tmp_env["SERVER_SOFTWARE"] = "Webserv";
-    tmp_env["REDIRECT_STATUS"] = intToStr(_request.getError());
+    tmp_env["REDIRECT_STATUS"] = intToStr(request.getError());
 
     // add request headers to env
-	for(std::map<std::string, std::string>::const_iterator it = _request.getHeaders().begin(); it != _request.getHeaders().end(); it++)
+	for(std::map<std::string, std::string>::const_iterator it = request.getHeaders().begin(); it != request.getHeaders().end(); it++)
 	{
 		std::string name = "HTTP_" + it->first;
 
@@ -278,28 +161,19 @@ void CgiHandler::_buildEnvironment()
 		tmp_env[name] = it->second;
 	}
 
-    // builds environemnt as char** for the execve call
-    _env = new char*[tmp_env.size() + 1];
-    size_t i = 0;
-    for (std::map<std::string, std::string>::iterator it = tmp_env.begin(); it != tmp_env.end(); it++)
-	{
-		_env[i] = new char[it->first.size() + it->second.size() + 2];
-        std::string line = it->first + "=" + it->second;
-		std::strcpy(_env[i], line.c_str());
-        i++;
-	}
-	_env[tmp_env.size()] = NULL;
-}
-
-// ==========   Member functions   =========== //
-/*
-executes cgi
-*/
-void CgiHandler::execCgi() 
-{
     try
     {
-        _buildEnvironment();
+        // builds environemnt as char** for the execve call
+        _env = new char*[tmp_env.size() + 1];
+        size_t i = 0;
+        for (std::map<std::string, std::string>::iterator it = tmp_env.begin(); it != tmp_env.end(); it++)
+	    {
+	    	_env[i] = new char[it->first.size() + it->second.size() + 2];
+            std::string line = it->first + "=" + it->second;
+	    	std::strcpy(_env[i], line.c_str());
+            i++;
+	    }
+	    _env[tmp_env.size()] = NULL;
     }
     catch(const std::exception& e)
     {
@@ -307,73 +181,238 @@ void CgiHandler::execCgi()
         _error = INTERNAL_SERVER_ERROR;
         return ;
     }
-    
+}
+
+// ==========   Member functions   =========== //
+
+/*
+extracts the cgi output into the headers and the body
+    - changes the _error to what is in the Status header if given
+*/
+void CgiHandler::parseCgi(uint8_t *data, size_t size)
+{
+    uint8_t         ch;
+	std::string		header_name, header_value;
+
+    if (_error != OK)
+        return;
+    for (size_t i = 0; i < size; i++)
+	{
+		ch = data[i];
+		switch (_state) {
+        
+		case Cgi_Header_Start:
+			if (ch == CR)
+			{
+				_state = Cgi_End_LF;
+				break;
+			}
+			else if (ch == LF)
+			{
+                _state = Cgi_Parsing_Finished;
+				break;
+			}
+			else
+				_state = Cgi_Header_Key;
+			// fall through
+		case Cgi_Header_Key: 
+			if (ch == ':')
+			{
+				_state = Cgi_Header_WS;
+				break;
+			}
+			else
+			{
+				header_name.push_back(ch);
+				break;
+			}
+		case Cgi_Header_WS:
+			if (iswspace(ch))
+            {
+				_state = Cgi_Header_Value;
+				break;
+            }
+            else
+            {
+				_state = Cgi_Header_Value;
+                _error = INTERNAL_SERVER_ERROR;
+                Logger::log(RED, ERROR, "Invalid HTTP response format: Expected space after the header name. Check CGI script: %s", _script_path.c_str());
+                return;
+            }
+			// fall through
+		case Cgi_Header_Value:
+			if (ch == CR)
+				break;
+			if (ch == LF)
+				_state = Cgi_Header_End;
+			else
+			{
+				header_value.push_back(ch);
+				break;
+			}
+			// fall through
+		case Cgi_Header_End:
+            // check for status header
+            if (header_name == "Status")
+            {
+                _error = atoi(header_value.c_str());
+                if (_error < 100 || _error >= 600)
+                {
+                    _error = INTERNAL_SERVER_ERROR;
+                    Logger::log(RED, ERROR, "Invalid HTTP status code specified in CGI script");
+                    return;
+                }
+            }
+            if (!_addHeader(header_name, header_value))
+            {
+                _error = INTERNAL_SERVER_ERROR;
+                Logger::log(RED, ERROR, "Invalid HTTP response format: Invalid HTTP header. Check CGI script: %s", _script_path.c_str());
+                return;
+            }
+			header_name.clear();
+			header_value.clear();
+			_state = Cgi_Header_Start;
+			break;
+		case Cgi_End_LF:
+			if (ch == LF)
+			{
+                _state = Cgi_Parsing_Finished;
+				break;
+			}
+			_error = INTERNAL_SERVER_ERROR;
+            Logger::log(RED, ERROR, "Invalid HTTP response format: Expected newline character ('\n') after carriage return ('\r'). Check CGI script: %s", _script_path.c_str());
+            return;
+            break;
+        case Cgi_Parsing_Finished:
+            // extract body
+            _body.push_back(ch);
+            break;
+		}
+    }
+}
+
+/*
+clear the CGIHandler object
+*/
+void CgiHandler::clear()
+{
+    _state = Cgi_Header_Start;
+    _body = "";
+    _error = OK;
+    _script_path = "";
+    _binary_path = "";
+    _start_time = 0;
+    pipe_in[0] = -1;
+    pipe_in[1] = -1;
+    pipe_out[0] = -1;
+    pipe_out[1] = -1;
+    finished_execution = false;
+    if (_env != NULL)
+	{
+		for (size_t i = 0; _env[i]; i++)
+			delete[] _env[i];
+		delete[] _env;
+	}
+    _env = NULL;
+}
+
+/*
+close all open fd for pipes
+*/
+void CgiHandler::_closePipes()
+{
+    if (pipe_in[0] != -1)
+        close(pipe_in[0]);
+    if (pipe_in[1] != -1)
+        close(pipe_in[1]);
+    if (pipe_out[0] != -1)
+        close(pipe_out[0]);
+    if (pipe_out[1] != -1)
+        close(pipe_out[1]);
+}
+
+/*
+executes cgi
+*/
+void CgiHandler::execCgi(Request &request, ServerBlock &server, std::string script_path, std::string binary_path, sockaddr_in client_addr) 
+{
+    _script_path = script_path;
+    _binary_path = binary_path;
+    try
+    {
+        _buildEnvironment(request, server, client_addr);
+    }
+    catch(const std::exception& e)
+    {
+        Logger::log(RED, ERROR, "Failed to build the environment for CGI: %e", e.what());
+        _error = INTERNAL_SERVER_ERROR;
+        return ;
+    }
+
+    // builds argv for execve
     char *argv[3];
     argv[0] = const_cast<char*>(_binary_path.c_str());
     argv[1] = const_cast<char*>(_script_path.c_str());
     argv[2] = NULL;
 
-    int cgifd[2];
-    if (!_request.getBody().empty())
+    // opens pipe_in if request has body
+    if (!request.getBody().empty())
     {
-        if (pipe(cgifd) == -1)
+        if (pipe(pipe_in) == -1)
         {
             Logger::log(RED, ERROR, "Creating cgi pipe has failed, aborting CGI init process.");
             return;
         }
-        write(cgifd[1], _request.getBody().c_str(), _request.getBody().length());
-        close(cgifd[1]);
+        setNonBlocking(pipe_in[1]);
     }
-    else 
+
+    // opens pipe_out
+    if (pipe(pipe_out) == -1)
     {
-        cgifd[0] = 0;
-        cgifd[1] = 1;
-    }
-    int fd[2], pid, status;
-    if (pipe(fd) == -1)
-    {
+        _closePipes();
+        _error = INTERNAL_SERVER_ERROR;
         Logger::log(RED, ERROR, "Creating pipe has failed, aborting CGI init process.");
-        _error = INTERNAL_SERVER_ERROR;
         return;
     }
-    if ((pid = fork()) == -1)
+    setNonBlocking(pipe_out[0]);
+
+    // creates child process
+    if ((_cgi_pid = fork()) == -1)
     {
+        _closePipes();
+        _error = INTERNAL_SERVER_ERROR;
         Logger::log(RED, ERROR, "Creating fork has failed, aborting CGI init process.");
-        _error = INTERNAL_SERVER_ERROR;
         return;
     }
-    if (!pid)
+
+    // child process
+    if (_cgi_pid == 0)
     {
-        if (dup2(fd[1], 1) == -1)
+        if (dup2(pipe_out[1], 1) == -1)
         {
-            Logger::log(RED, ERROR, "Child Process ID: %i: dup2 has failed (WRITE)", pid);
+            _closePipes();
             _error = INTERNAL_SERVER_ERROR;
+            Logger::log(RED, ERROR, "Child Process ID: %i: dup2 has failed (WRITE)", _cgi_pid);
             exit(EXIT_FAILURE);
         }
-        if (cgifd[0] != 0 && dup2(cgifd[0], 0) == -1) //if cgifd is not unset, set it now
-        { 
-            Logger::log(RED, ERROR, "Child Process ID: %i: dup2 has failed (READ)", pid);
+        if (pipe_in[0] != -1 && dup2(pipe_in[0], 0) == -1)
+        {
+            _closePipes();
             _error = INTERNAL_SERVER_ERROR;
+            Logger::log(RED, ERROR, "Child Process ID: %i: dup2 has failed (READ)", _cgi_pid);
             exit(EXIT_FAILURE);
         }
+        _closePipes();
         execve(*argv, argv, _env);
-        Logger::log(RED, ERROR, "Child Process ID: %i: Execve has failed", pid);
         _error = INTERNAL_SERVER_ERROR;
+        Logger::log(RED, ERROR, "Child Process ID: %i: Execve has failed", _cgi_pid);
         exit(EXIT_FAILURE);
     }
-    waitpid(pid, &status, 0);
-    if (!WIFEXITED(status))
+    else
     {
-        _error = INTERNAL_SERVER_ERROR;
-        // close(fd[0]) ????
-        // close(fd[1]) ????
-        // close(cgifd[0]) ????
-        return;
+        _start_time = time(NULL);
+        close(pipe_out[1]);
+        if (pipe_in[0] != -1)
+            close(pipe_in[0]);
     }
-    close(fd[1]); //WRITE END
-    _readCgi(fd[0]);
-    if (!_request.getBody().empty())
-        close(cgifd[0]);
-    close(fd[0]); //READ END
-    return;
 }

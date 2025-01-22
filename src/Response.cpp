@@ -1,19 +1,24 @@
 #include "../inc/Response.hpp"
 
 // =============   Constructor   ============= //
+
 Response::Response()
 {
     _response = "";
     _error = OK;
     _body = "";
+    cgi_state = No_Cgi;
+    _client_fd = 0;
 }
 
 // ============   Deconstructor   ============ //
+
 Response::~Response()
 {
 }
 
 // ==============   Getters   ================ //
+
 const std::string &Response::getResponse() const
 {
     return _response;
@@ -25,6 +30,7 @@ int Response::getError() const
 }
 
 // ================   Utils   ================ //
+
 /*
 returns an string accordingly to the error_code
 */
@@ -229,6 +235,7 @@ static std::map<std::string, Location>::iterator   findLocation(std::string path
 }
 
 // ======   Private member functions   ======= //
+
 /*
 sets _connection either to 'close' or 'keep-alive' depending on _error and client request
 */
@@ -252,7 +259,7 @@ searches for custom error page or uses default error page to setup the _body str
 */
 void Response::_buildErrorPage(ServerBlock &server)
 {
-    std::map<int, std::string> error_pages = server._error_pages;
+    std::map<int, std::string> error_pages = server.error_pages;
 
     _body.clear();
     if (error_pages.count(_error))
@@ -291,21 +298,21 @@ void Response::_handleGet(ServerBlock &server, std::string path, Location &locat
             return;
         }
         // check for index
-        if (location._index != "")
+        if (location.index != "")
         {
-            _body = readFile(location._index);
-            _headers.insert(std::make_pair("Content-Type", getMimeType(location._index)));
+            _body = readFile(location.index);
+            _headers.insert(std::make_pair("Content-Type", getMimeType(location.index)));
             return ;
         }
         // check for autoindex
-        if (location._autoindex == false)
+        if (location.autoindex == false)
         {
             _error = FORBIDDEN;
             return ;
         }
         else
         {
-            _body = buildAutoindex(path, server._root);
+            _body = buildAutoindex(path, server.root);
             _headers.insert(std::make_pair("Content-Type", "text/html"));
             return ;
         }
@@ -329,24 +336,21 @@ handles an POST request
 */
 void Response::_handlePost(Request &request, std::string path, Location &location)
 {
-    if (location._upload.empty())
+    if (location.upload.empty())
     {
         _error = FORBIDDEN;
         return;
     }
     struct stat file_info;
 
-    // std::cout << request.getHeaders().at("Content-Type") << std::endl;
-    // std::cout << request.getBody() << std::endl;
     if (stat(path.c_str(), &file_info) == 0 && S_ISDIR(file_info.st_mode)) // upload a file
     {
         size_t content_start;
         size_t content_end;
         std::string filename;
         std::string filepath;
-        filepath = location._upload;
+        filepath = location.upload;
     
-        std::cout << request.getBody() << std::endl;
         if(request.getHeaders().at("Content-Type").find("multipart/form-data") != std::string::npos)
         {
             std::istringstream file_content(request.getBody());
@@ -377,7 +381,7 @@ void Response::_handlePost(Request &request, std::string path, Location &locatio
         else
         {
             filename = getCurrentDateTime();
-            path = location._alias;
+            path = location.alias;
             filepath = filepath + filename;
             content_start = 0;
             content_end = request.getBody().length();
@@ -483,7 +487,7 @@ bool Response::_checkCgi(Request &request, ServerBlock &server, std::string path
         return false;
 
     // checks if cgi is allowed
-    if (location._cgi.size() == 0)
+    if (location.cgi.size() == 0)
         return false;
     
     struct stat file_info;
@@ -499,8 +503,8 @@ bool Response::_checkCgi(Request &request, ServerBlock &server, std::string path
         if (path[path.size() - 1] != '/' && path.compare(path.size() - 2, 2, "/$") != 0)
             return false;
         // check for index
-        if (location._index != "")
-            path = location._index;
+        if (location.index != "")
+            path = location.index;
         else
             return false;
     }
@@ -513,16 +517,18 @@ bool Response::_checkCgi(Request &request, ServerBlock &server, std::string path
         return false;
     
     std::string extension = path.substr(pos, path.size() - pos);
-    if (location._cgi.count(extension))
+    if (location.cgi.count(extension))
     {
-        // handle cgi
-        CgiHandler cgi(request, server, path, location._cgi[extension], _client_addr);
-
-        cgi.execCgi();
-        _body = cgi.getBody();
-        _headers.insert(cgi.getHeaders().begin(), cgi.getHeaders().end());
+        cgi.execCgi(request, server, path, location.cgi[extension], _client_addr);
         if (cgi.getError() != OK)
+        {
             _error = cgi.getError();
+            return false;
+        }
+        if (!request.getBody().empty())
+            cgi_state = Cgi_Write;
+        else
+            cgi_state = Cgi_Read;
         return true;
     }
     return false;
@@ -537,10 +543,10 @@ void Response::_handleRequest(Request &request, ServerBlock &server)
     std::map<std::string, Location>::iterator location;
     std::string path = request.getPath();
 
-    location = findLocation(path, server._locations);
+    location = findLocation(path, server.locations);
     
     // no location found
-    if (location == server._locations.end())
+    if (location == server.locations.end())
     {
         _error = NOT_FOUND;
         return ;
@@ -549,21 +555,21 @@ void Response::_handleRequest(Request &request, ServerBlock &server)
     switch (request.getMethod()) {
 
     case GET:
-        if (location->second._allowed_methods._allow_get == false)
+        if (location->second.allowed_methods.allow_get == false)
         {
             _error = NOT_ALLOWED;
             return;
         }
         break;
     case POST:
-        if (location->second._allowed_methods._allow_post == false)
+        if (location->second.allowed_methods.allow_post == false)
         {
             _error = NOT_ALLOWED;
             return;
         }
         break;
     case DELETE:
-        if (location->second._allowed_methods._allow_delete == false)
+        if (location->second.allowed_methods.allow_delete == false)
         {
             _error = NOT_ALLOWED;
             return;
@@ -575,30 +581,30 @@ void Response::_handleRequest(Request &request, ServerBlock &server)
     }
 
     // check for redirection
-    if (location->second._redirection != "")
+    if (location->second.redirection != "")
     {
         _error = MOVED_PERMANENTLY;
-        _headers.insert(std::make_pair("Location", location->second._redirection));
+        _headers.insert(std::make_pair("Location", location->second.redirection));
         return ;
     }
 
     // add root to path
     std::string root;
-    root = server._root;
+    root = server.root;
     root.erase(root.size() - 1, 1);
     path = root + path;
 
     // check for alias
-    if (location->second._alias != "")
+    if (location->second.alias != "")
     {
         size_t pos = path.find(root + location->first);
         if (pos != std::string::npos)
-            path.replace(pos, root.size() + location->first.size(), location->second._alias);
+            path.replace(pos, root.size() + location->first.size(), location->second.alias);
     }
 
     // check for cgi
     if (_checkCgi(request, server, path, location->second))
-        return ;
+        return;
 
     // handle methods
     switch (request.getMethod()) {
@@ -619,6 +625,7 @@ void Response::_handleRequest(Request &request, ServerBlock &server)
 }
 
 // ======   Public member functions   ======= //
+
 /*
 looks inside the response headers for "Connection"
     - returns true if Connection: keep-alive
@@ -643,6 +650,8 @@ void Response::clear()
     _error = OK;
     _body = "";
     _headers.clear();
+    cgi_state = No_Cgi;
+    cgi.clear();
 }
 
 /*
@@ -656,18 +665,40 @@ void Response::trimResponse(int bytes_send)
 /*
 builds the Response for the request of the client
 */
-void Response::buildResponse(Request &request, sockaddr_in client_addr)
+void Response::buildResponse(Request &request, int client_fd, sockaddr_in client_addr)
 {
     // getting server block
     ServerBlock *server = request.getServerBlock();
 
     if (server == NULL)
-        return ;
+        return;
 
     _client_addr = client_addr;
+    _client_fd = client_fd;
     _error = request.getError();
     if (_error == OK)
         _handleRequest(request, *server);
+
+    if (cgi_state != No_Cgi)
+        return;
+
+    constructResponseStr(request);
+}
+
+void Response::constructResponseStr(Request &request)
+{
+    // getting server block
+    ServerBlock *server = request.getServerBlock();
+
+    if (server == NULL)
+        return;
+
+    if (cgi_state != No_Cgi)
+    {
+        _error = cgi.getError();
+        _headers = cgi.getHeaders();
+        _body = cgi.getBody();
+    }
 
     if (_error >= 400 || _error == CREATED)
         _buildErrorPage(*server);
@@ -696,4 +727,3 @@ void Response::buildResponse(Request &request, sockaddr_in client_addr)
 
     _response = oss.str();
 }
-

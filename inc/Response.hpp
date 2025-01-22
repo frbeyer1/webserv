@@ -1,8 +1,19 @@
 #pragma once
 
 #include "Webserv.hpp"
+#include "CgiHandler.hpp"
 
 class Request;
+
+class CgiHandler;
+
+enum CgiState
+{
+    No_Cgi,
+    Cgi_Write,
+    Cgi_Read,
+    Cgi_Done,
+};
 
 class Response
 {
@@ -11,6 +22,7 @@ class Response
         std::string                         _response;
         std::string                         _body;
         sockaddr_in                         _client_addr;
+        int                                 _client_fd;
         std::map<std::string, std::string>  _headers;
 
     // Private member functions
@@ -23,6 +35,10 @@ class Response
         void        _buildErrorPage(ServerBlock &server);
 
     public:
+    // Public member variables
+        CgiHandler                          cgi;
+        CgiState                            cgi_state;
+
     // Constructor
         Response();
     
@@ -34,7 +50,8 @@ class Response
         const std::string&  getResponse() const;
 
     // Member functions
-        void        buildResponse(Request &request, sockaddr_in client_addr);
+        void        buildResponse(Request &request, int client_fd, sockaddr_in client_addr);
+        void        constructResponseStr(Request &request);
         bool        checkConnection();
         void        trimResponse(int i);
         void        clear();

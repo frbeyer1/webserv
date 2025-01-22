@@ -20,7 +20,7 @@ public:
 // Getters
     in_addr_t           getHost() const;
     uint16_t            getPort() const;
-    int                 getSocketFd() const;
+    int                 getFd() const;
     struct sockaddr_in  getSocketAddress() const;
 
 // Setters
@@ -33,3 +33,6 @@ public:
     int                 acceptConnection(); 
 
 };
+
+// Utils
+int    setNonBlocking(int fd);

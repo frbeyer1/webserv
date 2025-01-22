@@ -30,40 +30,44 @@
 #include "Request.hpp"
 #include "Logger.hpp"
 #include "Socket.hpp"
-#include "CgiHandler.hpp"
 
 /* ========== Logger Settings ========== */
-#define LOGFILE_NAME                                "webserv.log"
+
 // ON or OFF
 #define DEFAULT_LOGGER_STATE                        ON
-// STDOUT or OUT_FILE
-#define DEFAULT_LOGGER_OUTPUT                       STDOUT
 // ERROR, INFO or DEBUG
 #define DEFAULT_LOGGER_LEVEL                        INFO
+// STDOUT or OUT_FILE
+#define DEFAULT_LOGGER_OUTPUT                       STDOUT
+// if LOGGER_STATE is OUTFILE
+#define LOGFILE_NAME                                "webserv.log"
 
 
 /* ====== Default Config Settings ====== */
+
 #define DEFAULT_CONFIG                              "conf/default.conf"
-#define DEFAULT_INDEX                               "index.html"
 #define DEFAULT_PORT                                80
 #define DEFAULT_HOST                                "0.0.0.0"
+#define DEFAULT_INDEX                               "index.html"
 #define DEFAULT_NAME                                "default"
 #define DEFAULT_ROOT                                "docs/"
 #define DEFAULT_CLIENT_MAX_BODY_SIZE                10240
 
 
 /* ======== Technical Settings ========= */
+
 #define BACKLOG                                     5
 #define MAX_EPOLL_EVENTS                            10
 #define MAX_CONNECTIONS                             10
 #define MAX_URI_LENGTH                              4096
 #define MAX_HEADER_LENGTH                           8192
 #define CLIENT_CONNECTION_TIMEOUT                   60
-#define REQUEST_READ_SIZE                           4096
-#define RESPONSE_WRITE_SIZE                         4096
-
+#define CGI_TIMEOUT                                 5
+#define READ_BUFFER_SIZE                            4096
+#define WRITE_BUFFER_SIZE                           4096
 
 /* ========= HTTP Error Codes ========== */
+
 #define OK                                          200
 #define CREATED                                     201
 #define NO_CONTENT                                  204
@@ -79,9 +83,11 @@
 #define REQUEST_HEADER_FIELDS_TOO_LARGE             431
 #define INTERNAL_SERVER_ERROR                       500
 #define NOT_IMPLEMENTED                             501
-
+#define BAD_GATEWAY                                 502
+#define GATEWAY_TIMEOUT                             504
 
 /* === ANSI escape codes for colors ==== */
+
 #define RESET                                       "\033[0m"
 #define RED                                         "\033[31m"
 #define YELLOW                                      "\033[33m"

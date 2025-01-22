@@ -82,6 +82,7 @@ private:
 
 // Private Member functions
     void                                        _findServerBlock(std::string host);
+    void                                        _findDefaultServerBlock();
 
 public:
 // Constructor
@@ -105,7 +106,7 @@ public:
     const std::string&                          getPath() const;
     const std::string&                          getQuery() const;
     const std::string&                          getFragment() const;
-    const std::string&                          getBody() const;
+    std::string&                                getBody();
     const std::map<std::string, std::string>&   getHeaders() const;
 
 // Setters

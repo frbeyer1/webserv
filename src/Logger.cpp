@@ -5,6 +5,7 @@ LogLevel Logger::_level = DEFAULT_LOGGER_LEVEL;
 LogOutput Logger::_output = DEFAULT_LOGGER_OUTPUT;
 
 // ================   Setter   =============== //
+
 void    Logger::setState(LogState state)
 {
     _state = state;
@@ -21,8 +22,9 @@ void    Logger::setOutputMode(LogOutput output)
 }
 
 // ================   Utils   ================ //
+
 /*
-returns an timestamp string with the format [day/month/year  hours:minutes:seconds]
+Returns an timestamp string with the format [day/month/year  hours:minutes:seconds]
 */
 static std::string getTimestamp()
 {
@@ -35,7 +37,7 @@ static std::string getTimestamp()
 }
 
 /*
-returns an string with the loglvl
+Returns an string with the loglvl
 */
 static std::string getLogLevelStr(LogLevel loglvl)
 {
@@ -56,7 +58,7 @@ static std::string getLogLevelStr(LogLevel loglvl)
 
 // =======   Static member functions   ======= //
 /*
-logs an message depending on the logger settings
+Log an message depending on the logger settings
 */
 void    Logger::log(const char *color, LogLevel level, const char *format, ...)
 {
@@ -72,7 +74,7 @@ void    Logger::log(const char *color, LogLevel level, const char *format, ...)
     vsnprintf(&output[0], 250, format, args);
     va_end(args);
 
-    if (_output == OUT_FILE)
+    if (_output == OUTFILE)
     {
         std::ofstream outFile(LOGFILE_NAME, std::ios::app);
 

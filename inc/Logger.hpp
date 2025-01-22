@@ -18,7 +18,7 @@ enum LogLevel
 enum LogOutput
 {
     STDOUT,
-    OUT_FILE,
+    OUTFILE,
 };
 
 class Logger
