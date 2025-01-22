@@ -37,3 +37,5 @@ int main(int argc, char **argv)
 // - free all e_data structs
 // - upload.html has to fields and the button is to big
 // - check all comments
+// - make ServerManager.cpp clean
+// - check CGI Parser
