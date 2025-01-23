@@ -357,8 +357,6 @@ void Response::_handlePost(Request &request, std::string path, Location &locatio
             std::string boundary;
             std::getline(file_content, boundary);
             boundary.erase(boundary.find_last_not_of("\r\n") + 1);
-            std::string boundary_end = boundary;
-            boundary_end.append("--");
             size_t pos = request.getBody().find("filename") + 10;
             if (pos != std::string::npos)
             {
@@ -375,7 +373,7 @@ void Response::_handlePost(Request &request, std::string path, Location &locatio
                 return ;}
             
             filepath = filepath + "/" + filename;
-            content_end = request.getBody().find(boundary_end) - 2;
+            content_end = request.getBody().find(boundary, boundary.size());
             content_start = request.getBody().find("\r\n\r\n") + 4;
         }
         else
