@@ -29,13 +29,3 @@ int main(int argc, char **argv)
     master.setup(config);
     master.boot();
 }
-
-// ======== TO DO =========== //
-
-// - support multiple files upload in POST requests
-// - boundary is in uploaded file
-// - free all e_data structs
-// - upload.html has to fields and the button is to big
-// - check all comments
-// - make ServerManager.cpp clean
-// - check CGI Parser
