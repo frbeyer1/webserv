@@ -19,7 +19,7 @@ ServerManager::~ServerManager()
 adds the add_fd to the epoll instance for EPOLLIN events
 Returns zero on success, -1 on error
 */
-static int    addToEpollInstance(int epoll_fd, int add_fd, int client_fd)
+static int    addListeningSocketToEpoll(int epoll_fd, int add_fd, int client_fd)
 {
     struct epoll_event listening_event;
 
@@ -33,23 +33,21 @@ static int    addToEpollInstance(int epoll_fd, int add_fd, int client_fd)
     return 0;
 }
 
-// EPOLLRDHUP
-// static int    addToEpollInstance2(int epoll_fd, int add_fd, int client_fd)
-// {
-//     struct epoll_event listening_event;
+static e_data*    addToEpollInstanceEpollin(int epoll_fd, int add_fd, int client_fd)
+{
+    struct epoll_event listening_event;
 
-// 	e_data* data = new e_data;
-// 	data->fd = add_fd;
-// 	data->client_fd = client_fd;
-// 	listening_event.data.ptr = data;
-// 	listening_event.events = EPOLLIN | EPOLLOUT;
-//     if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, add_fd, &listening_event) == -1)
-//         return -1;
-//     return 0;
-// }
+	e_data* data = new e_data;
+	data->fd = add_fd;
+	data->client_fd = client_fd;
+	listening_event.data.ptr = data;
+	listening_event.events = EPOLLIN;
+    if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, add_fd, &listening_event) == -1)
+        return NULL;
+    return data;
+}
 
-
-static int    addToEpollInstance3(int epoll_fd, int add_fd, int client_fd)
+static e_data*    addToEpollInstanceEpollout(int epoll_fd, int add_fd, int client_fd)
 {
     struct epoll_event listening_event;
 
@@ -59,10 +57,9 @@ static int    addToEpollInstance3(int epoll_fd, int add_fd, int client_fd)
 	listening_event.data.ptr = data;
 	listening_event.events = EPOLLOUT;
     if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, add_fd, &listening_event) == -1)
-        return -1;
-    return 0;
+        return NULL;
+    return data;
 }
-
 
 // ======   Private member functions   ======= //
 
@@ -105,8 +102,9 @@ void    ServerManager::_acceptNewConnection(int socket_fd)
     client.request.setSocket(client.socket);
     client.request.setServerBlocks(_server_blocks);
 
-    //  adding client_fd to epoll instance 
-    if (addToEpollInstance(_epoll_fd, client.client_fd, -1) < 0)
+    //  adding client_fd to epoll instance
+    client.epoll_data = addToEpollInstanceEpollin(_epoll_fd, client.client_fd, -1);
+    if (client.epoll_data == NULL)
     {
         Logger::log(RED, ERROR, "adding fd[%i] to epoll instance failed", client.client_fd);
         return ;
@@ -132,8 +130,36 @@ void    ServerManager::_closeConnection(int fd)
         Logger::log(RED, ERROR, "Deleting fd[%i] from epoll instance failed: %s", fd, strerror(errno));
     if (close(fd))
         Logger::log(RED, ERROR, "Closing fd[%i] failed: %s", fd, strerror(errno));
+    if (_client_map[fd].epoll_data != NULL)
+        delete _client_map[fd].epoll_data;
     _client_map.erase(fd);
     Logger::log(CYAN, INFO, "Closed connection on fd[%i]", fd);
+}
+
+/*
+checking if cgi child process finished 
+or check for CGI_TIMEOUT and kill child
+*/
+void    ServerManager::_checkCgiTimeout(Client &client)
+{
+    if (client.response.cgi.finished_execution == true)
+        return;
+    if (difftime(time(NULL), client.response.cgi.getStartTime()) > CGI_TIMEOUT)
+    {
+        kill(client.response.cgi.getCgiPid(), SIGKILL);
+        client.response.cgi.setError(GATEWAY_TIMEOUT);
+        client.response.cgi.finished_execution = true;
+    }
+    else
+    {
+        int status;
+        if (waitpid(client.response.cgi.getCgiPid(), &status, WNOHANG) == 0)
+            return;
+	    else if (!WIFEXITED(status))
+            client.response.cgi.setError(INTERNAL_SERVER_ERROR);
+        client.response.cgi.finished_execution = true;
+    }
+    return;
 }
 
 /*
@@ -202,8 +228,20 @@ void    ServerManager::_readRequest(Client &client, struct epoll_event event)
         if (client.response.cgi_state != No_Cgi)
         {
             if (client.response.cgi.pipe_in[1] != -1)
-                addToEpollInstance3(_epoll_fd, client.response.cgi.pipe_in[1], client.client_fd);
-            addToEpollInstance(_epoll_fd, client.response.cgi.pipe_out[0], client.client_fd);
+            {
+                client.response.cgi.epoll_data_in = addToEpollInstanceEpollout(_epoll_fd, client.response.cgi.pipe_in[1], client.client_fd);
+                if (client.response.cgi.epoll_data_in == NULL)
+                {
+                    Logger::log(RED, ERROR, "adding fd[%i] to epoll instance failed", client.client_fd);
+                    return ;
+                }
+            }
+            client.response.cgi.epoll_data_out = addToEpollInstanceEpollin(_epoll_fd, client.response.cgi.pipe_out[0], client.client_fd);
+            if (client.response.cgi.epoll_data_out == NULL)
+            {
+                Logger::log(RED, ERROR, "adding fd[%i] to epoll instance failed", client.client_fd);
+                return ;
+            }
         }
         event.events = EPOLLOUT;
         if (epoll_ctl(_epoll_fd, EPOLL_CTL_MOD, fd, &event))
@@ -227,23 +265,7 @@ void    ServerManager::_sendResponse(Client &client, struct epoll_event event)
 {
     if (client.response.cgi_state != No_Cgi && client.response.cgi_state != Cgi_Done)
     {
-        if (client.response.cgi.finished_execution == true)
-            return;
-        if (difftime(time(NULL), client.response.cgi.getStartTime()) > CGI_TIMEOUT)
-        {
-            kill(client.response.cgi.getCgiPid(), SIGKILL);
-            client.response.cgi.setError(GATEWAY_TIMEOUT);
-            client.response.cgi.finished_execution = true;
-        }
-        else
-        {
-            int status;
-            if (waitpid(client.response.cgi.getCgiPid(), &status, WNOHANG) == 0)
-                return;
-		    if (!WIFEXITED(status))
-                client.response.cgi.setError(INTERNAL_SERVER_ERROR);
-            client.response.cgi.finished_execution = true;
-        }
+        _checkCgiTimeout(client);
         return;
     }
 
@@ -462,7 +484,7 @@ void    ServerManager::boot()
     // adds all server_fds to epoll instance and starts listening on the server sockets
     for (std::map<int, Socket>::iterator it = _socket_map.begin(); it != _socket_map.end(); it++)
     {
-        if (addToEpollInstance(_epoll_fd, it->second.getFd(), -1) < 0)
+        if (addListeningSocketToEpoll(_epoll_fd, it->second.getFd(), -1) < 0)
         {
             Logger::log(RED, ERROR, "adding fd[%i] to epoll instance failed", it->second.getFd());
             exit(EXIT_FAILURE);

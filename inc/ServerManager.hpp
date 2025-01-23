@@ -4,12 +4,6 @@
 #include "Client.hpp"
 #include "Response.hpp"
 
-struct e_data 
-{
-	int	fd;
-	int client_fd;
-};
-
 class ServerManager
 {
 private:
@@ -26,6 +20,7 @@ private:
     void    _writeBodyToCgi(Client &client, int pipe_fd);
     void    _readCgiResponse(Client &client, int pipe_fd);
     void    _checkTimeout();
+    void    _checkCgiTimeout(Client &client);
 
 public:
 // Constructor

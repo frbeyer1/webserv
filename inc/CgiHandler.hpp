@@ -2,6 +2,12 @@
 
 #include "Webserv.hpp"
 
+struct e_data 
+{
+	int	fd;
+	int client_fd;
+};
+
 enum CgiParsingState
 {
     Cgi_Header_Start,
@@ -36,6 +42,8 @@ public:
     int                                 pipe_in[2];
     int                                 pipe_out[2];
     bool                                finished_execution;
+    e_data*                             epoll_data_in;
+    e_data*                             epoll_data_out;
 
 // Constructor
     CgiHandler();

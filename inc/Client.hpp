@@ -3,6 +3,7 @@
 #include "Webserv.hpp"
 #include "Request.hpp"
 #include "Response.hpp"
+#include "CgiHandler.hpp"
 
 struct Client
 {
@@ -12,4 +13,5 @@ struct Client
     Request             request;
     Response            response;
     Socket              *socket;
+    e_data              *epoll_data;
 };

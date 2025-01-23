@@ -15,6 +15,8 @@ CgiHandler::CgiHandler()
     pipe_out[1] = -1;
     finished_execution = false;
     _env = NULL;
+    epoll_data_in = NULL;
+    epoll_data_out = NULL;
 }
 
 // ============   Deconstructor   ============ //
@@ -27,6 +29,10 @@ CgiHandler::~CgiHandler()
 			delete[] _env[i];
 		delete[] _env;
 	}
+    if (epoll_data_in != NULL)
+        delete epoll_data_in;
+    if (epoll_data_out != NULL)
+        delete epoll_data_out;
 }
 
 // ==============   Getters   ================ //
@@ -314,6 +320,12 @@ void CgiHandler::clear()
 		delete[] _env;
 	}
     _env = NULL;
+    if (epoll_data_in != NULL)
+        delete epoll_data_in;
+    if (epoll_data_out != NULL)
+        delete epoll_data_out;
+    epoll_data_in = NULL;
+    epoll_data_out = NULL;
 }
 
 /*
