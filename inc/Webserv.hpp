@@ -58,7 +58,7 @@
 
 #define BACKLOG                                     5
 #define MAX_EPOLL_EVENTS                            10
-#define MAX_CONNECTIONS                             10000
+#define MAX_CONNECTIONS                             100
 #define MAX_URI_LENGTH                              4096
 #define MAX_HEADER_LENGTH                           8192
 #define CLIENT_CONNECTION_TIMEOUT                   60
