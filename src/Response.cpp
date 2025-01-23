@@ -723,7 +723,10 @@ void Response::constructResponseStr(Request &request)
 
     // insert body
     if (!_body.empty())
-        oss << _body << "\r\n";
+        oss << _body;
+
+    // insert CRLF
+    oss << "\r\n";
 
     _response = oss.str();
 }

@@ -283,6 +283,9 @@ void    Request::_findServerBlock(std::string host)
 {
     if (_socket == NULL)
         return ;
+    size_t colonPos = host.find(':');
+    if (colonPos != std::string::npos)
+        host.erase(colonPos);
     for (size_t i = 0; i < _server_blocks.size(); i++)
     {
         // search for server_block with the host header
@@ -292,7 +295,7 @@ void    Request::_findServerBlock(std::string host)
             if (server_names[j] == host && _server_blocks[i].host == _socket->getHost() && _server_blocks[i].port == _socket->getPort())
             {
                 _server = &_server_blocks[i];
-                _client_max_body_size = _server_blocks[i].client_max_body_size;
+                _client_max_body_size = _server_blocks[i].client_max_body_size;                
                 return;
             }
         }

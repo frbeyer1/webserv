@@ -169,7 +169,7 @@ static void handleServerNames(std::string parameter, ServerBlock &server_block)
         {
             server_block.server_names.push_back(name);
             name.clear();
-            while (iswspace(parameter[i]))
+            while (iswspace(parameter[i]) && parameter[i + 1] && iswspace(parameter[i + 1]))
                 i++;
         }
         else if ((parameter[i] < 'a' || parameter[i] > 'z') && (parameter[i] < 'A' || parameter[i] > 'Z') 
@@ -766,7 +766,6 @@ void    ConfigParser::_setDefaultValues(ServerBlock &server_block)
     server_block.root = DEFAULT_ROOT;
     server_block.client_max_body_size = DEFAULT_CLIENT_MAX_BODY_SIZE;
     server_block.socket = NULL;
-    server_block.server_names.push_back(DEFAULT_NAME);
 }
 
 // ==========   Member functions   =========== //

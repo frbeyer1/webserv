@@ -155,8 +155,15 @@ void    ServerManager::_checkCgiTimeout(Client &client)
         int status;
         if (waitpid(client.response.cgi.getCgiPid(), &status, WNOHANG) == 0)
             return;
-	    else if (!WIFEXITED(status))
-            client.response.cgi.setError(INTERNAL_SERVER_ERROR);
+	    else if (WIFEXITED(status))
+        {
+            int exit_status = WEXITSTATUS(status);
+            if (exit_status != 0)
+            {
+                client.response.cgi.setError(INTERNAL_SERVER_ERROR);
+                Logger::log(RED, ERROR, "Error in CGI script");
+            }
+        }
         client.response.cgi.finished_execution = true;
     }
     return;
@@ -407,7 +414,9 @@ void    ServerManager::setup(std::string config)
     // printing the server setup
     for (size_t i = 0; i < _server_blocks.size(); i++)
     {
-        std::string server_name = "";
+        std::string server_name;
+        if (_server_blocks[i].server_names.empty())
+            _server_blocks[i].server_names.push_back(DEFAULT_NAME);
         if (!_server_blocks[i].server_names.empty())
             server_name = _server_blocks[i].server_names[0];
         Logger::log(WHITE, INFO, "Server setup: Name[%s] Host[%s] Port[%i]", server_name.c_str(), _server_blocks[i].ip.c_str(), _server_blocks[i].port);
@@ -535,7 +544,7 @@ void    ServerManager::boot()
             {
                 if (_client_map[client_fd].response.cgi_state == Cgi_Write)
                     _writeBodyToCgi(_client_map[client_fd], fd);
-                else if (_client_map[client_fd].response.cgi_state == Cgi_Read)
+                else if (_client_map[client_fd].response.cgi_state == Cgi_Read && _client_map[client_fd].response.cgi.finished_execution == true)
                     _readCgiResponse(_client_map[client_fd], fd);
             }
         }
