@@ -85,5 +85,6 @@ server {
 ```
 ### Architecture
 
-![architectural_overview](https://github.com/user-attachments/assets/5de4ed7b-48da-4a1d-9919-c967193fbc3e)
+![architectural_overview](https://github.com/user-attachments/assets/f408d366-c186-46f1-937c-5016bc5ce855)
+
 
