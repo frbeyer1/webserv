@@ -79,6 +79,7 @@ static  std::string lookupErrorMessage(int error_code)
 
 /*
 reads the file with the given path in binary mode and returns its content as a string
+!!! throws exception on fail !!!
 */
 static std::string    readFile(std::string path)
 {
@@ -87,8 +88,8 @@ static std::string    readFile(std::string path)
 
     if (!file.is_open())
     {
-        Logger::log(RED, ERROR, "Failed opening the file: %s", path);
-        exit (EXIT_FAILURE);
+        // Logger::log(RED, ERROR, "Failed opening the file: %s", path.c_str());
+        throw std::ios_base::failure("Unable to open file: " + path);
     }
 
     std::ostringstream oss;
@@ -264,8 +265,18 @@ void Response::_buildErrorPage(ServerBlock &server)
     _body.clear();
     if (error_pages.count(_error))
     {
-        _body = readFile(error_pages[_error]);
-        _headers.insert(std::make_pair("Content-Type", getMimeType(error_pages[_error])));
+        try
+        {
+            _body = readFile(error_pages[_error]);
+            _headers.insert(std::make_pair("Content-Type", getMimeType(error_pages[_error])));
+        }
+        catch(const std::exception& e)
+        {
+            Logger::log(RED, ERROR, "%s", e.what());
+            _error = INTERNAL_SERVER_ERROR;
+            _body = _buildDefaultErrorPage(_error);
+            _headers.insert(std::make_pair("Content-Type", "text/html"));
+        }
     }
     else
     {
@@ -300,8 +311,16 @@ void Response::_handleGet(ServerBlock &server, std::string path, Location &locat
         // check for index
         if (location.index != "")
         {
-            _body = readFile(location.index);
-            _headers.insert(std::make_pair("Content-Type", getMimeType(location.index)));
+            try
+            {
+                _body = readFile(location.index);
+                _headers.insert(std::make_pair("Content-Type", getMimeType(location.index)));
+            }
+            catch(const std::exception& e)
+            {
+                Logger::log(RED, ERROR, "%s", e.what());
+                _error = INTERNAL_SERVER_ERROR;
+            }
             return ;
         }
         // check for autoindex
@@ -320,8 +339,16 @@ void Response::_handleGet(ServerBlock &server, std::string path, Location &locat
     // checks if target is regular file
     else if (S_ISREG(file_info.st_mode))
     {
-        _body = readFile(path);
-        _headers.insert(std::make_pair("Content-Type", getMimeType(path)));
+        try
+        {
+            _body = readFile(path);
+            _headers.insert(std::make_pair("Content-Type", getMimeType(path)));
+        }
+        catch(const std::exception& e)
+        {
+            Logger::log(RED, ERROR, "%s", e.what());
+            _error = INTERNAL_SERVER_ERROR;
+        }
         return ;
     }
     else
