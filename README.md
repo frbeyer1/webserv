@@ -85,8 +85,5 @@ server {
 ```
 ### Architecture
 
-work in progress ...
+![architectural_overview](https://github.com/user-attachments/assets/533395d9-895a-4fa2-9305-5289260f125d)
 
-### Resources
-
-work in progress ...
