@@ -7,7 +7,7 @@ More information about the project is in the [subject.pdf](https://github.com/mo
 
 This was a group project consisting of [@frbeyer](https://github.com/frbeyer1), [@Edy-Nelson](https://github.com/Edy-Nelson) and [@me](https://github.com/mottjes)
 
-### Features
+## Features
 
 - **HTTP/1.1 Protocol Support:** handles GET, POST and DELETE requests
 - **Static Content:** serves static content (like HTML, CSS, ...)
@@ -19,7 +19,7 @@ This was a group project consisting of [@frbeyer](https://github.com/frbeyer1), 
 - **Error Pages:** generates default error pages if non are provided
 - **Directory Listening:**  generates an directory listening, if no index file is given and autoindex is enabled
 
-### Installation
+## Installation
 
 1. Clone the repository
 ```
@@ -31,7 +31,7 @@ cd webserv
 make
 ```
 
-### Usage
+## Usage
 
 1. To start the server, run:
 ```
@@ -46,11 +46,11 @@ Insert the path to the config file or if no path is specified, it will look for 
 http://localhost:8080
 ```
 
-### Configuration
+## Configuration
 
 The Configuration file is a text file that contains various settings named directives that dictate how the web server should operate. If any directive is not set, it will take the default settings (defined in Webserv.hpp). You can setup multiple servers in one configuration file. For that you can specify multiple server blocks with different settings.
 
-#### Example:
+### Example:
 
 ```
 server {
@@ -83,7 +83,7 @@ server {
     }
 }
 ```
-### Architecture
+## Architecture
 
 ![architectural_overview](https://github.com/user-attachments/assets/f408d366-c186-46f1-937c-5016bc5ce855)
 
