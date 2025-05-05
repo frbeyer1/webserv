@@ -5,7 +5,7 @@ It aims to provide a thorough understanding of the HTTP protocol, networking pri
 
 More information about the project is in the [subject.pdf](https://github.com/mottjes/webserv/blob/main/subject.pdf)
 
-This was a group project consisting of [@frbeyer](https://github.com/mottjes), [@Edy-Nelson](https://github.com/Edy-Nelson) and [@me](https://github.com/frbeyer1)
+This was a group project consisting of [@mottjes](https://github.com/mottjes), [@Edy-Nelson](https://github.com/Edy-Nelson) and [@me](https://github.com/frbeyer1)
 
 ## Features
 
